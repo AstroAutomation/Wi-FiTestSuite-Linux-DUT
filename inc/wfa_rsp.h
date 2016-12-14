@@ -19,7 +19,7 @@
 
 #ifndef WFA_RSP_H
 #define WFA_RSP_H
-
+#include <inttypes.h>
 #include "wfa_ver.h"
 
 #ifdef WFA_WMM_VOICE
@@ -30,13 +30,13 @@
 
 typedef struct _tg_ping_stop_resp
 {
-    int sendCnt;
-    int repliedCnt;
+    int32_t sendCnt;
+    int32_t repliedCnt;
 } tgPingStopResp_t;
 
 typedef struct ca_sta_get_ipconfig_resp
 {
-    int isDhcp;
+    int32_t isDhcp;
     char ipaddr[WFA_IP_ADDR_STR_LEN];
     char mask[WFA_IP_MASK_STR_LEN];
     char dns[WFA_MAX_DNS_NUM][WFA_IP_ADDR_STR_LEN];
@@ -46,13 +46,13 @@ typedef struct ca_sta_get_ipconfig_resp
 
 typedef struct ca_sta_get_stats_resp
 {
-    int status;
-    int txFrames;
-    int rxFrames;
-    int txMulticast;
-    int rxMulticast;
-    int fcsErrors ;
-    int txRetries;
+    int32_t status;
+    int32_t txFrames;
+    int32_t rxFrames;
+    int32_t txMulticast;
+    int32_t rxMulticast;
+    int32_t fcsErrors ;
+    int32_t txRetries;
 } caStaGetStatsResp_t;
 
 typedef struct ca_device_get_info_resp
@@ -65,24 +65,24 @@ typedef struct ca_device_get_info_resp
 
 typedef struct ca_sta_upload_resp
 {
-    short seqnum;
-    short nbytes;
+    int16_t  seqnum;
+    int16_t  nbytes;
     char bytes[256];
 } caStaUploadResp_t;
 
 typedef struct ca_device_list_if_resp
 {
-    int status;
+    int32_t status;
 #define IF_80211   1
 #define IF_ETH     2
-    int iftype;
+    int32_t iftype;
     char ifs[3][16];
 } caDeviceListIFResp_t;
 
 typedef struct ca_sta_cli_command_resp
 {
-    int status;
-    short resFlag;
+    int32_t status;
+    int16_t  resFlag;
     char result[WFA_CLI_CMD_RESP_LEN];
 } caStaCliCmdResp_t;
 /* P2P */
@@ -110,7 +110,7 @@ typedef struct ca_sta_start_wfd_conn_resp
 typedef struct ca_sta_get_parameter_resp
 {
 
-    BYTE getParamType;
+    char getParamType;
     char devList[128];
 	char masterPref[8];
 } caStaGetParameterResp_t;
@@ -123,7 +123,7 @@ typedef struct ca_sta_nfc_action_resp
 {
    char result[8];
    char grpId[WFA_P2P_GRP_ID_LEN];
-   int peerRole;   
+   int32_t peerRole;
 } caStaNfcActionResp_t;
 /* NFC */
 
@@ -132,14 +132,14 @@ typedef struct ca_sta_nfc_action_resp
 typedef struct wfds_serviceAdv_info
 {
 	char servName[32];
-	long int advtID;
-	char serviceMac[WFA_P2P_DEVID_LEN];	
+	uint64_t advtID;
+	char serviceMac[WFA_P2P_DEVID_LEN];
 } wfdsServAdvInfo_t;
 
 
 typedef struct ca_sta_ConnSess_cmd_resp
 {
-	long int sessionID;
+	uint64_t sessionID;
 	char result[8];
 	char grpId[WFA_P2P_GRP_ID_LEN];
 
@@ -154,16 +154,16 @@ enum {
 
 typedef struct ca_sta_SearchResult_Event
 {
-	long int searchID;
-	char serviceMac[WFA_MAC_ADDR_STR_LEN];	 
-	long int advID; 
-	char serviceName[32];	 
-	WORD serviceStatus;
+	uint64_t searchID;
+	char serviceMac[WFA_MAC_ADDR_STR_LEN];
+	uint64_t advID;
+	char serviceName[32];
+	uint32_t serviceStatus;
 } caStaSearchResultEvent_t;
 
 typedef struct ca_sta_SearchTerminated_Event
 {
-	long int searchID;
+	uint64_t searchID;
 } caStaSearchTerminatedEvent_t;
 
 enum {
@@ -173,30 +173,30 @@ enum {
 
 typedef struct ca_sta_AdvStatus_Event
 {
-	long int advID; 
-	WORD status;
+	uint64_t advID;
+	uint32_t status;
 } caStaAdvertiseStatusEvent_t;
 
 
 typedef struct ca_sta_SessionRequest_Event
 {
-	long int advID; 
-	char sessionMac[WFA_MAC_ADDR_STR_LEN];	 
-	long int sessionID;
+	uint64_t advID;
+	char sessionMac[WFA_MAC_ADDR_STR_LEN];
+	uint64_t sessionID;
 } caStaSessionRequestEvent_t;
 
 enum {
 	eSessionStateOpen= 1,
 	eSessionStateInitiated,
 	eSessionStateRequested,
-	eSessionStateClosed,	
+	eSessionStateClosed,
 };
 
 typedef struct ca_sta_SessionStatus_Event
 {
-	long int sessionID; 
-	char sessionMac[WFA_MAC_ADDR_STR_LEN];	 
-	WORD state;
+	uint64_t sessionID;
+	char sessionMac[WFA_MAC_ADDR_STR_LEN];
+	uint32_t state;
 } caStaSessionStatusEvent_t;
 enum {
 	eNetworkRoleRejected= 1,
@@ -211,30 +211,30 @@ enum {
 
 typedef struct ca_sta_ConnectStatus_Event
 {
-	long int sessionID; 
-	char sessionMac[WFA_MAC_ADDR_STR_LEN];	 
-	WORD status;
+	uint64_t sessionID;
+	char sessionMac[WFA_MAC_ADDR_STR_LEN];
+	uint32_t status;
 } caStaConnectStatusEvent_t;
 
 enum {
 	eLocalPortAllowed= 1,
 	eLocalPortBlocked,
 	eFailure,
-	eRemotePortAllowed,	
+	eRemotePortAllowed,
 };
 
 typedef struct ca_sta_PortStatus_Event
 {
-	long int sessionID; 
-	char sessionMac[WFA_MAC_ADDR_STR_LEN];	 
-	WORD port;
-	WORD status;
+	uint64_t sessionID;
+	char sessionMac[WFA_MAC_ADDR_STR_LEN];
+	uint32_t port;
+	uint32_t status;
 } caStaPortStatusEvent_t;
 
 
 typedef struct ca_sta_GetEventDetails_cmd_resp
 {
-	WORD eventID;
+	uint32_t eventID;
 	union _EventType
 	{
 		caStaSearchResultEvent_t searchResult;
@@ -257,45 +257,45 @@ typedef struct ca_sta_GetEvents_cmd_resp
 
 typedef struct ca_sta_invoke_Seek_cmd_resp
 {
-	long int searchID;
+	uint64_t searchID;
 } caStaInvokeSeekCmdResp_t;
 typedef struct ca_sta_invoke_Advrt_cmd_resp
 {
-	int numServInfo;
+	int32_t numServInfo;
 	wfdsServAdvInfo_t servAdvInfo[5];
 } caStaInvokeAdvrtCmdResp_t;
 
 typedef struct ca_sta_invoke_cmd_resp
 {
-	int invokeCmdRspType;
-	union _wfdsInvokeCmd
-	{
-		caStaInvokeAdvrtCmdResp_t advRsp;
-		caStaInvokeSeekCmdResp_t seekRsp;
-		caStaConnSessCmdResp_t connSessResp;
+    int32_t invokeCmdRspType;
+    union _wfdsInvokeCmd
+    {
+        caStaInvokeAdvrtCmdResp_t advRsp;
+        caStaInvokeSeekCmdResp_t seekRsp;
+        caStaConnSessCmdResp_t connSessResp;
 
-	}invokeCmdResp;
- 
+    }invokeCmdResp;
+
 } caStaInvokeCmdResp_t;
 /* WFDS */
 
 typedef struct ca_sta_exec_action_resp
 {
-	char mac[18];
+    char mac[18];
 } caStaExecActionResp_t;
 
 typedef struct ca_sta_get_events_resp
 {
-	char eventName[64];
-	unsigned int remoteInstanceID;
-	unsigned int localInstanceID;
-	char mac[18];
+    char eventName[64];
+    uint32_t remoteInstanceID;
+    uint32_t localInstanceID;
+    char mac[18];
 } caStaGetEventsResp_t;
 
 typedef struct dut_cmd_response
 {
-    int status;
-    int streamId;
+    int32_t status;
+    int32_t streamId;
     union _cmdru
     {
         tgStats_t stats;
@@ -305,8 +305,8 @@ typedef struct dut_cmd_response
         caDeviceGetInfoResp_t devInfo;
         caDeviceListIFResp_t ifList;
         caStaUploadResp_t  uld;
-	   caStaGetEventsResp_t getEvents;
-	   caStaExecActionResp_t execAction;
+        caStaGetEventsResp_t getEvents;
+        caStaExecActionResp_t execAction;
         char version[WFA_VERSION_LEN];
         char info[WFA_INFO_BUFSIZE];
         char bssid[WFA_MAC_ADDR_STR_LEN];
@@ -325,17 +325,17 @@ typedef struct dut_cmd_response
 
 /* WFD */
 /* NFC */
-	   caStaNfcActionResp_t staNfcAction;
+        caStaNfcActionResp_t staNfcAction;
 /* NFC */
 /* WFDS */
-	   caStaInvokeCmdResp_t staInvokeCmd;
-	   caStaConnSessCmdResp_t staManageServ;
-	   caStaGetEventListCmdResp_t staGetEvents;	   
-	   caStaGetEventDetailsCmdResp_t staGetEventDetails;	   
+        caStaInvokeCmdResp_t staInvokeCmd;
+        caStaConnSessCmdResp_t staManageServ;
+        caStaGetEventListCmdResp_t staGetEvents;
+        caStaGetEventDetailsCmdResp_t staGetEventDetails;
 
 /* WFDS */
 
-       int connected;
+       int32_t connected;
    } cmdru;
 }dutCmdResponse_t;
 

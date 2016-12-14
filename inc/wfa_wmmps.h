@@ -1,6 +1,6 @@
 /****************************************************************************
 *
-* Copyright (c) 2015 Wi-Fi Alliance
+* Copyright (c) 2016 Wi-Fi Alliance
 *
 * Permission to use, copy, modify, and/or distribute this software for any
 * purpose with or without fee is hereby granted, provided that the above
@@ -16,6 +16,9 @@
 *
 *****************************************************************************/
 
+#ifndef WFA_WMMPS_H
+#define WFA_WMMPS_H
+
 
 /*
  * * APTS messages/tests
@@ -29,7 +32,7 @@
 #define M_Y     7
 #define	L_1		8
 #define	A_Y		9		// active mode version of M_Y
-#define	B_W		10		// 
+#define	B_W		10		//
 #define	A_J		11		// Active test of sending 4 down
 #define M_V     12
 #define M_U     13
@@ -66,7 +69,8 @@
 #define LAST_TEST       WMMAC_525_T07t10
 #else
 #define LAST_TEST       M_W
-#endif
+#endif // end WFA_WMM_AC
+
 #define	APTS_DEFAULT	(LAST_TEST + 0x01)		// message codes
 #define	APTS_HELLO	(APTS_DEFAULT + 0x01)
 #define	APTS_BCST	(APTS_HELLO + 0x01)
@@ -92,7 +96,7 @@
 /*Listen Inteval for station,to be changed to the actual value*/
 #define   lis_int  500000
 #define   becon_int  100000
-#endif
+#endif // end WFA_WMM_AC
 #define NTARG           32
 
 #define WFA_DEFAULT_CODEC_SEC         0
@@ -186,7 +190,7 @@ typedef struct wfa_wmmps
 } wfaWmmPS_t;
 
 
-
+void wfaWmmpsInitFlag(void);
 int WfaStaSndHello(char,int,int *state);
 int WfaStaSndConfirm(char,int,int *state);
 int WfaStaSndVO(char,int,int *state);
@@ -208,3 +212,7 @@ int WfaRcvVI(unsigned int *,int ,int *);
 int WfaRcvBE(unsigned int *,int ,int *);
 int WfaRcvBK(unsigned int *,int ,int *);
 int WfaRcvNotCare(unsigned int *,int ,int *);
+
+void * wfa_wmm_thread(void *thr_param);
+
+#endif

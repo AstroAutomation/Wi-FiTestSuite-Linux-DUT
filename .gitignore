@@ -1,0 +1,8 @@
+*.o
+*.a
+wfa_dut
+wfa_ca
+
+~*
+*.swp
+*.kdev4

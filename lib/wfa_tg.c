@@ -1,7 +1,7 @@
 
 /****************************************************************************
 *
-* Copyright (c) 2015 Wi-Fi Alliance
+* Copyright (c) 2016 Wi-Fi Alliance
 *
 * Permission to use, copy, modify, and/or distribute this software for any
 * purpose with or without fee is hereby granted, provided that the above
@@ -42,32 +42,25 @@
 #include "wfa_rsp.h"
 #include "wfa_wmmps.h"
 #include "wfa_miscs.h"
+#include "wfa_ca_resp.h"
 
 extern tgStream_t gStreams[];
-extern BOOL gtgRecv;
-extern BOOL gtgSend;
-extern BOOL gtgTransac;
+extern bool gtgRecv;
+extern bool gtgSend;
+extern bool gtgTransac;
 extern int gtimeOut;
 extern int gRegSec;
-extern BOOL gtgCaliRTD;
+extern bool gtgCaliRTD;
 
 int btSockfd = -1;
 int adj_latency;
 
-extern tgStream_t *findStreamProfile(int);
-extern int wfaTrafficSendTo(int, char *, int, struct sockaddr *);
-extern int wfaTrafficRecv(int, char *, struct sockaddr *);
-extern void wfaSendPing(tgPingStart_t *staPing, float *interval, int streamid);
-extern int wfaStopPing(dutCmdResponse_t *stpResp, int streamid);
-extern unsigned short wfa_defined_debug;
 extern int tgSockfds[];
 
 extern tgWMM_t wmm_thr[];
 
 extern double min_rttime;
 extern double gtgPktRTDelay;
-extern void int2BuffBigEndian(int val, char *buf);
-extern int bigEndianBuff2Int(char *buff);
 
 #ifdef WFA_WMM_PS_EXT
 extern int gtgWmmPS;
@@ -79,9 +72,7 @@ extern unsigned int psTxMsg[];
 extern unsigned int psRxMsg[];
 extern int gtgPsPktRecvd;
 
-extern void wfaSetDUTPwrMgmt(int mode);
 void wmmps_wait_state_proc();
-extern void wfaWmmpsInitFlag();
 
 #endif
 
@@ -97,12 +88,12 @@ extern int sendThrId;
 
 char e2eResults[124];
 #if 0  /* for test purpose only */
-char *e2eResults = "/tmp/e2e1198798626.txt";
+char* e2eResults = "/tmp/e2e1198798626.txt";
 #endif
 
 
 extern dutCmdResponse_t gGenericResp;
-static int  tableDscpToTos[15] [2] = {{0,0},{8,32},{10,40},{14,56},{18,72},{22,88},{24,96},{28,112},{34,136},{36,144},{38,152},{40,160},{46,184},{48,192},{56,224}};
+static int  tableDscpToTos[15] [2] = {{0, 0}, {8, 32}, {10, 40}, {14, 56}, {18, 72}, {22, 88}, {24, 96}, {28, 112}, {34, 136}, {36, 144}, {38, 152}, {40, 160}, {46, 184}, {48, 192}, {56, 224}};
 
 
 /* Some devices may only support UDP ECHO and do not have ICMP level ping */
@@ -113,15 +104,15 @@ static int  tableDscpToTos[15] [2] = {{0,0},{8,32},{10,40},{14,56},{18,72},{22,8
  * input: id - stream id;
  * return: matched stream profile
  */
-tgStream_t *findStreamProfile(int id)
+tgStream_t* findStreamProfile(int id)
 {
     int i;
-    tgStream_t *myStream = gStreams;
+    tgStream_t* myStream = gStreams;
 
-    for(i = 0; i< WFA_MAX_TRAFFIC_STREAMS; i++)
-    {
-        if(myStream->id == id)
+    for(i = 0; i < WFA_MAX_TRAFFIC_STREAMS; i++) {
+        if(myStream->id == id) {
             return myStream;
+        }
 
         myStream++;
     }
@@ -129,125 +120,130 @@ tgStream_t *findStreamProfile(int id)
     return NULL;
 }
 
-tgProfile_t *findTGProfile(int streamId)
+tgProfile_t* findTGProfile(int streamId)
 {
     volatile int i;
-    tgStream_t *myStream = gStreams;
+    tgStream_t* myStream = gStreams;
 
-    for(i = 0; i< WFA_MAX_TRAFFIC_STREAMS; i++)
-    {
-       if(myStream->id == streamId)
-          return &(myStream->profile);
-       
-       myStream++;
+    for(i = 0; i < WFA_MAX_TRAFFIC_STREAMS; i++) {
+        if(myStream->id == streamId) {
+            return & (myStream->profile);
+        }
+
+        myStream++;
     }
 
     return NULL;
 }
 
 
-int convertDscpToTos(int dscp)// return >=0 as TOS, otherwise error.
+int convertDscpToTos(int dscp)    // return >=0 as TOS, otherwise error.
 {
-    int i =0;
+    int i = 0;
 
-    for (i=0; i< WFA_DSCP_TABLE_SIZE; i++)
-    {
-        if ( tableDscpToTos[i][0] == dscp)
+    for(i = 0; i < WFA_DSCP_TABLE_SIZE; i++) {
+        if(tableDscpToTos[i][0] == dscp) {
             return tableDscpToTos[i][1];
+        }
     }
+
     return  -1;
 }
 /*
  * wfaTGSendPing(): Instruct Traffic Generator to send ping packets
  *
  */
-int wfaTGSendPing(int len, BYTE *caCmdBuf, int *respLen, BYTE *respBuf)
+int wfaTGSendPing(int len, char* caCmdBuf, int* respLen, char* respBuf)
 {
     int streamid = ++streamId;
     float interval;      /* it could be subseconds/100s minisecond */
-    tgPingStart_t *staPing = (tgPingStart_t *)caCmdBuf;
-    dutCmdResponse_t *spresp = &gGenericResp;
+    tgPingStart_t* staPing = (tgPingStart_t*) caCmdBuf;
+    dutCmdResponse_t* spresp = &gGenericResp;
 
 #ifdef WFA_PING_UDP_ECHO_ONLY
-    tgStream_t *myStream = NULL;
+    tgStream_t* myStream = NULL;
 #endif
 
     DPRINT_INFO(WFA_OUT, "\nEntering wfaTGSendPing ...\n");
-    if(staPing->frameSize == 0)
-         staPing->frameSize = 100;
-    
-    
-    if(staPing->frameRate == 0)
-         staPing->frameRate = 1;
 
-    interval = (float) 1/staPing->frameRate;
-    
+    if(staPing->frameSize == 0) {
+        staPing->frameSize = 100;
+    }
 
-    if(staPing->duration == 0)
-         staPing->duration = 30;
-    printf("framerate %f interval %f streamID %d duration %d\n", 
-            staPing->frameRate, interval, streamId,staPing->duration);
 
-    switch(staPing->type)
-    {
-    case WFA_PING_ICMP_ECHO:
+    if(staPing->frameRate == 0) {
+        staPing->frameRate = 1;
+    }
+
+    interval = (float) 1 / staPing->frameRate;
+
+
+    if(staPing->duration == 0) {
+        staPing->duration = 30;
+    }
+
+    printf("framerate %f interval %f streamID %d duration %d\n",
+           staPing->frameRate, interval, streamId, staPing->duration);
+
+    switch(staPing->type) {
+        case WFA_PING_ICMP_ECHO:
 #ifndef WFA_PING_UDP_ECHO_ONLY
-        
-        wfaSendPing(staPing, &interval, streamId);
 
-        spresp->status = STATUS_COMPLETE;
-        spresp->streamId = streamid;
+            wfaSendPing(staPing, &interval, streamId);
+
+            spresp->status = STATUS_COMPLETE;
+            spresp->streamId = streamid;
 #else
-        printf("Only support UDP ECHO\n");
+            printf("Only support UDP ECHO\n");
 #endif
-        break;
+            break;
 
-    case WFA_PING_UDP_ECHO:
-    {
+        case WFA_PING_UDP_ECHO: {
 #ifdef WFA_PING_UDP_ECHO_ONLY
-        /*
-         * Make this like a transaction testing
-         * Then make it a profile and run it
-         */
-        myStream = &gStreams[slotCnt++];
-        memset(myStream, 0, sizeof(tgStream_t));
-        memcpy(&myStream->profile, caCmdBuf, len);
-        myStream->id = streamid; /* the id start from 1 */
-        myStream->tblidx = slotCnt-1;
-
-        btSockfd = wfaCreateUDPSock("127.0.0.1", WFA_UDP_ECHO_PORT);
-        if((btSockfd = wfaConnectUDPPeer(btSockfd, staPing->dipaddr, WFA_UDP_ECHO_PORT)) > 0)
-        {
-            gtgTransac = streamid;
-            gtgSend = streamid;
-            totalTranPkts = 512;
-            sentTranPkts = 0;
-
             /*
-             * the framerate here is used to derive the timeout
-             * value for waiting transaction echo responses.
+             * Make this like a transaction testing
+             * Then make it a profile and run it
              */
-            gtimeOut = MINISECONDS/staPing->frameRate;  /* in msec */
+            myStream = &gStreams[slotCnt++];
+            memset(myStream, 0, sizeof(tgStream_t));
+            memcpy(&myStream->profile, caCmdBuf, len);
+            myStream->id = streamid; /* the id start from 1 */
+            myStream->tblidx = slotCnt - 1;
 
-            /* set to longest time */
-            if(staPing->duration == 0)
-                staPing->duration = 3600;
-        }
+            btSockfd = wfaCreateUDPSock("127.0.0.1", WFA_UDP_ECHO_PORT);
+
+            if((btSockfd = wfaConnectUDPPeer(btSockfd, staPing->dipaddr, WFA_UDP_ECHO_PORT)) > 0) {
+                gtgTransac = streamid;
+                gtgSend = streamid;
+                totalTranPkts = 512;
+                sentTranPkts = 0;
+
+                /*
+                 * the framerate here is used to derive the timeout
+                 * value for waiting transaction echo responses.
+                 */
+                gtimeOut = MINISECONDS / staPing->frameRate; /* in msec */
+
+                /* set to longest time */
+                if(staPing->duration == 0) {
+                    staPing->duration = 3600;
+                }
+            }
+
 #else
-        printf("Doesn't support UDP Echo\n");
+            printf("Doesn't support UDP Echo\n");
 #endif
-        break;
-    }
-    default:
-    {
-        spresp->status = STATUS_INVALID;
-        spresp->streamId = streamid;
-    }
+            break;
+        }
+
+        default: {
+            spresp->status = STATUS_INVALID;
+            spresp->streamId = streamid;
+        }
     }
 
-
-    wfaEncodeTLV(WFA_TRAFFIC_SEND_PING_RESP_TLV, sizeof(dutCmdResponse_t), (BYTE *)spresp, respBuf);
-    *respLen = WFA_TLV_HDR_LEN + sizeof(dutCmdResponse_t);
+    wfaEncodeTLV(WFA_TRAFFIC_SEND_PING_RESP_TLV, 8 + sizeof(tgPingStart_t), (char*) spresp, respBuf);
+    *respLen = WFA_TLV_HDR_LEN + 8 + sizeof(tgPingStart_t);
 
     return WFA_SUCCESS;
 }
@@ -256,54 +252,44 @@ int wfaTGSendPing(int len, BYTE *caCmdBuf, int *respLen, BYTE *respBuf)
  * tgStopPing(): Instruct Traffic Generator to stop ping packets
  *
  */
-int wfaTGStopPing(int len, BYTE *caCmdBuf, int *respLen, BYTE *respBuf)
+int wfaTGStopPing(int len, char* caCmdBuf, int* respLen, char* respBuf)
 {
-    int streamid = *(int *)(caCmdBuf);
-    dutCmdResponse_t *stpResp = &gGenericResp;
-    tgStream_t *myStream;
+    int streamid = * (int*)(caCmdBuf);
+    dutCmdResponse_t* stpResp = &gGenericResp;
+    tgStream_t* myStream;
     int i;
 
     stpResp->status = STATUS_COMPLETE;
 
-    printf("CS: The length %d\n and the command buff is \n",len);
+    printf("CS: The length %d\n and the command buff is \n", len);
 
-    for (i=0; i<8; i++)
-        printf(" %x ",caCmdBuf[i]);
+    for(i = 0; i < 8; i++) {
+        printf(" %x ", caCmdBuf[i]);
+    }
 
-    printf("\nthe stream id is %d",streamid);
+    printf("\nthe stream id is %d", streamid);
 
-    if( gtgTransac == streamid&&gtgSend == streamid)
-    {
-        gtgTransac =0;
+    if(gtgTransac == streamid && gtgSend == streamid) {
+        gtgTransac = 0;
         gtgSend = 0;
         gtgRecv = 0;
         alarm(0);
 
         myStream = findStreamProfile(streamid);
-        if(myStream == NULL)
-        {
+
+        if(myStream == NULL) {
             stpResp->status = STATUS_INVALID;
         }
 
         stpResp->cmdru.pingStp.sendCnt = myStream->stats.txFrames;
         stpResp->cmdru.pingStp.repliedCnt = myStream->stats.rxFrames;
     }
-    else
-    {
-#if 0
-        if(wfaStopPing(stpResp, streamid)== WFA_FAILURE)
-        {
-            stpResp->status = STATUS_COMPLETE;
-
-            wfaEncodeTLV(WFA_TRAFFIC_STOP_PING_RESP_TLV, sizeof(dutCmdResponse_t), (BYTE *)stpResp, respBuf);
-            *respLen = WFA_TLV_HDR_LEN + sizeof(dutCmdResponse_t);
-        }
-#endif
+    else {
         wfaStopPing(stpResp, streamid);
     }
 
-    wfaEncodeTLV(WFA_TRAFFIC_STOP_PING_RESP_TLV, sizeof(dutCmdResponse_t), (BYTE *)stpResp, respBuf);
-    *respLen = WFA_TLV_HDR_LEN + sizeof(dutCmdResponse_t);
+    wfaEncodeTLV(WFA_TRAFFIC_STOP_PING_RESP_TLV, 8 + sizeof(tgPingStopResp_t), (char*) stpResp, respBuf);
+    *respLen = WFA_TLV_HDR_LEN + 8 + sizeof(tgPingStopResp_t);
 
     return WFA_SUCCESS;
 }
@@ -316,28 +302,29 @@ int wfaTGStopPing(int len, BYTE *caCmdBuf, int *respLen, BYTE *respBuf)
  * return: success or fail
  * Note: the profile storage is a global space.
  */
-int wfaTGConfig(int len, BYTE *caCmdBuf, int *respLen, BYTE *respBuf)
+int wfaTGConfig(int len, char* caCmdBuf, int* respLen, char* respBuf)
 {
     int ret = WFA_FAILURE;
-    tgStream_t *myStream = NULL;
-    dutCmdResponse_t *confResp = &gGenericResp;
+    tgStream_t* myStream = NULL;
+    dutCmdResponse_t* confResp = &gGenericResp;
+    printf("enter %s\n", __FUNCTION__);
 
     /* if the stream table over maximum, reset it */
-    if(slotCnt == WFA_MAX_TRAFFIC_STREAMS)
+    if(slotCnt == WFA_MAX_TRAFFIC_STREAMS) {
         slotCnt = 0;
+    }
 
-    if(slotCnt == 0)
-    {
+    if(slotCnt == 0) {
         printf("resetting stream table\n");
-        wMEMSET(gStreams, 0, WFA_MAX_TRAFFIC_STREAMS*sizeof(tgStream_t));
+        memset(gStreams, 0, WFA_MAX_TRAFFIC_STREAMS * sizeof(tgStream_t));
     }
 
     DPRINT_INFO(WFA_OUT, "entering tcConfig ...\n");
     myStream = &gStreams[slotCnt++];
-    wMEMSET(myStream, 0, sizeof(tgStream_t));
-    wMEMCPY(&myStream->profile, caCmdBuf, len);
+    memset(myStream, 0, sizeof(tgStream_t));
+    memcpy(&myStream->profile, caCmdBuf, len);
     myStream->id = ++streamId; /* the id start from 1 */
-    myStream->tblidx = slotCnt-1;
+    myStream->tblidx = slotCnt - 1;
 
 #if 0
     DPRINT_INFO(WFA_OUT, "profile %i direction %i dest ip %s dport %i source %s sport %i rate %i duration %i size %i class %i delay %i\n", myStream->profile.profile, myStream->profile.direction, myStream->profile.dipaddr, myStream->profile.dport, myStream->profile.sipaddr, myStream->profile.sport, myStream->profile.rate, myStream->profile.duration, myStream->profile.pksize, myStream->profile.trafficClass, myStream->profile.startdelay);
@@ -345,8 +332,8 @@ int wfaTGConfig(int len, BYTE *caCmdBuf, int *respLen, BYTE *respBuf)
 
     confResp->status = STATUS_COMPLETE;
     confResp->streamId = myStream->id;
-    wfaEncodeTLV(WFA_TRAFFIC_AGENT_CONFIG_RESP_TLV, sizeof(dutCmdResponse_t), (BYTE *)confResp, respBuf);
-    *respLen = WFA_TLV_HDR_LEN + sizeof(dutCmdResponse_t);
+    wfaEncodeTLV(WFA_TRAFFIC_AGENT_CONFIG_RESP_TLV, 8, (char*) confResp, respBuf);
+    *respLen = WFA_TLV_HDR_LEN + 8;
 
 
     return ret;
@@ -358,13 +345,13 @@ int wfaTGConfig(int len, BYTE *caCmdBuf, int *respLen, BYTE *respBuf)
  * response:   inform controller for "running"
  * return:     success or failed
  */
-int wfaTGRecvStart(int len, BYTE *parms, int *respLen, BYTE *respBuf)
+int wfaTGRecvStart(int len, char* parms, int* respLen, char* respBuf)
 {
     int status = STATUS_COMPLETE, i;
-    int numStreams = len/4;
+    int numStreams = len / 4;
     int streamid;
-    tgProfile_t *theProfile;
-    tgStream_t *myStream;
+    tgProfile_t* theProfile;
+    tgStream_t* myStream;
 
     DPRINT_INFO(WFA_OUT, "entering tgRecvStart\n");
 
@@ -374,129 +361,113 @@ int wfaTGRecvStart(int len, BYTE *parms, int *respLen, BYTE *respBuf)
      * to implement
      */
 
-    for(i=0; i<numStreams; i++)
-    {
-        wMEMCPY(&streamid, parms+(4*i), 4); /* changed from 2 to 4, bug reported by n.ojanen */
+    for(i = 0; i < numStreams; i++) {
+        memcpy(&streamid, parms + (4 * i), 4);   /* changed from 2 to 4, bug reported by n.ojanen */
         myStream = findStreamProfile(streamid);
-        if(myStream == NULL)
-        {
+
+        if(myStream == NULL) {
+            DPRINT_INFO(WFA_OUT, "%s (%d) - error stream null\n", __FILE__, __LINE__);
             status = STATUS_INVALID;
             return status;
         }
 
         theProfile = &myStream->profile;
-        if(theProfile == NULL)
-        {
+
+        if(theProfile == NULL) {
+            DPRINT_INFO(WFA_OUT, "%s (%d) - error profile null\n", __FILE__, __LINE__);
             status = STATUS_INVALID;
             return status;
         }
 
         /* calculate the frame interval which is used to derive its jitter */
-        if(theProfile->rate != 0 && theProfile->rate < 5000)
-            myStream->fmInterval = 1000000/theProfile->rate; /* in ms */
-        else
+        if(theProfile->rate != 0 && theProfile->rate < 5000) {
+            myStream->fmInterval = 1000000 / theProfile->rate;  /* in ms */
+        }
+        else {
             myStream->fmInterval = 0;
+        }
 
-        if(theProfile->direction != DIRECT_RECV)
-        {
+        if(theProfile->direction != DIRECT_RECV) {
+            DPRINT_INFO(WFA_OUT, "%s (%d) - error direction wrong\n", __FILE__, __LINE__);
             status = STATUS_INVALID;
             return status;
         }
 
-        wMEMSET(&myStream->stats, 0, sizeof(tgStats_t));
+        memset(&myStream->stats, 0, sizeof(tgStats_t));
 
         // mark the stream active
         myStream->state = WFA_STREAM_ACTIVE;
 
-        switch(theProfile->profile)
-        {
+        switch(theProfile->profile) {
 #ifdef WFA_WPA2_SINGLE_THREAD
-        case PROF_MCAST:
-        case PROF_FILE_TX:
-            btSockfd = wfaCreateUDPSock(theProfile->dipaddr, theProfile->dport);
-            gtgRecv = streamid;
 
-            if(btSockfd < 0)
-                status = STATUS_ERROR;
-            else
-            {
-                /* get current flags setting */
-                int ioflags = wFCNTL(btSockfd, F_GETFL, 0);
+            case PROF_MCAST:
+            case PROF_FILE_TX:
+                btSockfd = wfaCreateUDPSock(theProfile->dipaddr, theProfile->dport);
+                gtgRecv = streamid;
 
-                /* set only BLOCKING flag to non-blocking */
-                wFCNTL(btSockfd, F_SETFL, ioflags | O_NONBLOCK);
-            }
-            break;
+                if(btSockfd < 0) {
+                    status = STATUS_ERROR;
+                }
+                else {
+                    /* get current flags setting */
+                    int ioflags = fcntl(btSockfd, F_GETFL, 0);
+
+                    /* set only BLOCKING flag to non-blocking */
+                    fcntl(btSockfd, F_SETFL, ioflags | O_NONBLOCK);
+                }
+
+                break;
 #else
 
-        case PROF_TRANSC:
-        case PROF_CALI_RTD:  /* Calibrate roundtrip delay */
-            gtgTransac = streamid;
-        case PROF_MCAST:
-        case PROF_FILE_TX:
-        case PROF_IPTV:
-            gtgRecv = streamid;
-            wmm_thr[usedThread].thr_flag = streamid;
-            wPT_MUTEX_LOCK(&wmm_thr[usedThread].thr_flag_mutex);
-            wPT_COND_SIGNAL(&wmm_thr[usedThread].thr_flag_cond);
-            wPT_MUTEX_UNLOCK(&wmm_thr[usedThread].thr_flag_mutex);
-            printf("Recv Start in thread %i for streamid %i\n", usedThread, streamid);
-            usedThread++;
-            break;
+            case PROF_TRANSC:
+            case PROF_CALI_RTD:  /* Calibrate roundtrip delay */
+                gtgTransac = streamid;
+
+            case PROF_MCAST:
+            case PROF_FILE_TX:
+            case PROF_IPTV:
+                gtgRecv = streamid;
+                wmm_thr[usedThread].thr_flag = streamid;
+                pthread_mutex_lock(&wmm_thr[usedThread].thr_flag_mutex);
+                pthread_cond_signal(&wmm_thr[usedThread].thr_flag_cond);
+                pthread_mutex_unlock(&wmm_thr[usedThread].thr_flag_mutex);
+                printf("Recv Start in thread %i for streamid %i\n", usedThread, streamid);
+                usedThread++;
+                break;
 #endif
-        case PROF_UAPSD:
+
+            case PROF_UAPSD:
 #ifdef WFA_WMM_PS_EXT
-#if 0
-            status = STATUS_COMPLETE;
-            psSockfd = wfaCreateUDPSock(theProfile->dipaddr, WFA_WMMPS_UDP_PORT);
 
-            wmmps_info.sta_state = 0;
-            wmmps_info.wait_state = WFA_WAIT_STAUT_00;
+                status = STATUS_COMPLETE;
+                wfaWmmpsInitFlag();
+                theProfile->trafficClass = 0;  // init to no traffic Class set
+                // from STA point view, in the WMMPS, source addr is PCEnd also as dest address to send to
+                strcpy(theProfile->dipaddr, theProfile->sipaddr);
 
-            wMEMSET(&wmmps_info.psToAddr, 0, sizeof(wmmps_info.psToAddr));
-            wmmps_info.psToAddr.sin_family = AF_INET;
-            wmmps_info.psToAddr.sin_addr.s_addr = inet_addr(theProfile->sipaddr);
-            wmmps_info.psToAddr.sin_port = htons(theProfile->sport);
-            wmmps_info.reset = 0;
+                memset(&wmmps_info.psToAddr, 0, sizeof(wmmps_info.psToAddr));
+                wmmps_info.psToAddr.sin_family = AF_INET;
+                wmmps_info.psToAddr.sin_addr.s_addr = inet_addr(theProfile->sipaddr);
+                wmmps_info.psToAddr.sin_port = htons(theProfile->sport);
+                wmmps_info.streamid = streamid;
 
-            wmm_thr[usedThread].thr_flag = streamid;
-            wmmps_info.streamid = streamid;
-            wPT_MUTEX_LOCK(&wmm_thr[usedThread].thr_flag_mutex);
-            wPT_COND_SIGNAL(&wmm_thr[usedThread].thr_flag_cond);
-            gtgWmmPS = streamid;;
-            wPT_MUTEX_UNLOCK(&wmm_thr[usedThread].thr_flag_mutex);
-
-            DPRINT_INFO(WFA_OUT, "wfaTGRecvStart, WMMPS rcv start, streamId=%d, usedThread=%d\n", streamid, usedThread);
-            usedThread++;
-#endif // remove for now.
-            status = STATUS_COMPLETE;
-            wfaWmmpsInitFlag();
-            theProfile->trafficClass = 0;  // init to no traffic Class set
-            // from STA point view, in the WMMPS, source addr is PCEnd also as dest address to send to
-            strcpy(theProfile->dipaddr, theProfile->sipaddr);
-
-            memset(&wmmps_info.psToAddr, 0, sizeof(wmmps_info.psToAddr));
-            wmmps_info.psToAddr.sin_family = AF_INET;
-            wmmps_info.psToAddr.sin_addr.s_addr = inet_addr(theProfile->sipaddr);
-            wmmps_info.psToAddr.sin_port = htons(theProfile->sport);
-            wmmps_info.streamid = streamid;
-
-            wmmps_mutex_info.thr_flag = streamid;
-            gtgWmmPS = streamid;
-            pthread_cond_signal(&wmmps_mutex_info.thr_flag_cond);//Aaron's//Wake up the wfa_wmmps_thread
-            DPRINT_INFO(WFA_OUT, "wfaTGRecvStart PROF_UAPSD srcIPAddr=%s desIPAddr=%s streamId=%d\n",
-                        theProfile->sipaddr, theProfile->dipaddr, wmmps_info.streamid );
-            gtimeOut = MINISECONDS/10;  /* in msec */
+                wmmps_mutex_info.thr_flag = streamid;
+                gtgWmmPS = streamid;
+                pthread_cond_signal(&wmmps_mutex_info.thr_flag_cond);    //Aaron's//Wake up the wfa_wmmps_thread
+                DPRINT_INFO(WFA_OUT, "wfaTGRecvStart PROF_UAPSD srcIPAddr=%s desIPAddr=%s streamId=%d\n",
+                            theProfile->sipaddr, theProfile->dipaddr, wmmps_info.streamid);
+                gtimeOut = MINISECONDS / 10; /* in msec */
 
 #endif   /* WFA_WMM_PS_EXT */
-            break;
+                break;
         }
     }
 
     /* encode a TLV for response for "complete/error ..." */
-    wfaEncodeTLV(WFA_TRAFFIC_AGENT_RECV_START_RESP_TLV, sizeof(int),
-                 (BYTE *)&status, respBuf);
-    *respLen = WFA_TLV_HDR_LEN + sizeof(int);
+    wfaEncodeTLV(WFA_TRAFFIC_AGENT_RECV_START_RESP_TLV, sizeof(uint32_t),
+                 (char*) &status, respBuf);
+    *respLen = WFA_TLV_HDR_LEN + sizeof(uint32_t);
 
     return WFA_SUCCESS;
 }
@@ -507,110 +478,82 @@ int wfaTGRecvStart(int len, BYTE *parms, int *respLen, BYTE *respBuf)
  * response:   inform controller for "complete"
  * return:     success or failed
  */
-int wfaTGRecvStop(int len, BYTE *parms, int *respLen, BYTE *respBuf)
+int wfaTGRecvStop(int len, char* parms, int* respLen, char* respBuf)
 {
     int status = STATUS_COMPLETE, i;
-    int numStreams = len/4;
+    int numStreams = len / 4;
     unsigned int streamid;
-    tgProfile_t *theProfile;
-    tgStream_t *myStream=NULL;
+    tgProfile_t* theProfile;
+    tgStream_t* myStream = NULL;
     dutCmdResponse_t statResp;
-    BYTE dutRspBuf[WFA_RESP_BUF_SZ];
+    char dutRspBuf[WFA_RESP_BUF_SZ];
     int id_cnt = 0;
 
-    DPRINT_INFO(WFA_OUT, "entering tgRecvStop with length %d\n",len);
+    DPRINT_INFO(WFA_OUT, "entering tgRecvStop with length %d\n", len);
 
     /* in case that send-stream not done yet, an optional delay */
-    while(sendThrId != 0)
+    while(sendThrId != 0) {
         sleep(1);
+    }
 
     /*
      * After finishing the receiving command, it should lower itself back to
      * normal level. It is optional implementation if it is not called
      * while it starts receiving for raising priority level.
      */
-    wMEMSET(dutRspBuf, 0, WFA_RESP_BUF_SZ);
-    for(i=0; i<numStreams; i++)
-    {
-        wMEMCPY(&streamid, parms+(4*i), 4);
+    memset(dutRspBuf, 0, WFA_RESP_BUF_SZ);
+
+    for(i = 0; i < numStreams; i++) {
+        memcpy(&streamid, parms + (4 * i), 4);
         printf(" stop stream id %i\n", streamid);
         myStream = findStreamProfile(streamid);
-        if(myStream == NULL)
-        {
+
+        if(myStream == NULL) {
             status = STATUS_INVALID;
-            wfaEncodeTLV(WFA_TRAFFIC_AGENT_RECV_STOP_RESP_TLV, 4, (BYTE *)&status, respBuf);
+            wfaEncodeTLV(WFA_TRAFFIC_AGENT_RECV_STOP_RESP_TLV, 4, (char*) &status, respBuf);
             *respLen = WFA_TLV_HDR_LEN + 4;
             printf("stream table empty\n");
             continue;
         }
 
         theProfile = &myStream->profile;
-        if(theProfile == NULL)
-        {
+
+        if(theProfile == NULL) {
             status = STATUS_INVALID;
-            wfaEncodeTLV(WFA_TRAFFIC_AGENT_RECV_STOP_RESP_TLV, 4, (BYTE *)&status, respBuf);
+            wfaEncodeTLV(WFA_TRAFFIC_AGENT_RECV_STOP_RESP_TLV, 4, (char*) &status, respBuf);
             *respLen = WFA_TLV_HDR_LEN + 4;
 
             return WFA_SUCCESS;
         }
 
-        if(theProfile->direction != DIRECT_RECV)
-        {
+        if(theProfile->direction != DIRECT_RECV) {
             status = STATUS_INVALID;
-            wfaEncodeTLV(WFA_TRAFFIC_AGENT_RECV_STOP_RESP_TLV, 4, (BYTE *)&status, respBuf);
+            wfaEncodeTLV(WFA_TRAFFIC_AGENT_RECV_STOP_RESP_TLV, 4, (char*) &status, respBuf);
             *respLen = WFA_TLV_HDR_LEN + 4;
 
             return WFA_SUCCESS;
         }
 
         /* reset its flags , close sockets */
-        switch(theProfile->profile)
-        {
-        case PROF_TRANSC:
-        case PROF_CALI_RTD:
-            gtgTransac = 0;
-        case PROF_MCAST:
-        case PROF_FILE_TX:
-        case PROF_IPTV:
-            gtgRecv = 0;
-            if(tgSockfds[myStream->tblidx] != -1)
-            {
-                wCLOSE(tgSockfds[myStream->tblidx]);
-                tgSockfds[myStream->tblidx] = -1;
-            }
-            break;
+        switch(theProfile->profile) {
+            case PROF_TRANSC:
+            case PROF_CALI_RTD:
+                gtgTransac = 0;
 
-        case PROF_UAPSD:
-#ifdef WFA_WMM_PS_EXT
-#if 0
-            gtgWmmPS = 0;
-            gtgPsPktRecvd = 0;
+            case PROF_MCAST:
+            case PROF_FILE_TX:
+            case PROF_IPTV:
+                gtgRecv = 0;
 
-            if(psSockfd != -1)
-            {
-                wCLOSE(psSockfd);
-                psSockfd = -1;
-            }
+                if(tgSockfds[myStream->tblidx] != -1) {
+                    close(tgSockfds[myStream->tblidx]);
+                    tgSockfds[myStream->tblidx] = -1;
+                }
 
-            wMEMSET(&wmmps_info, 0, sizeof(wfaWmmPS_t));
+                break;
 
-            wfaSetDUTPwrMgmt(PS_OFF);
-#endif // remove old code
-
-            DPRINT_INFO(WFA_OUT, "entering tgRecvStop PROF_UAPSD\n");
-            if(psSockfd  > 0)
-            {
-                wCLOSE(psSockfd);
-                psSockfd = -1;
-            }
-            wMEMSET(&wmmps_info, 0, sizeof(wfaWmmPS_t));
-
-            wfaSetDUTPwrMgmt(PS_OFF);
-            wSLEEP(3);
-            gtgWmmPS = 0;
-            gtgPsPktRecvd = 0;
-#endif /* WFA_WMM_PS_EXT */
-            break;
+            case PROF_UAPSD:
+                break;
 
         }
 
@@ -621,22 +564,22 @@ int wfaTGRecvStop(int len, BYTE *parms, int *respLen, BYTE *respBuf)
 #if 1
         DPRINT_INFO(WFA_OUT, "stream Id %u rx %u total %llu\n", streamid, myStream->stats.rxFrames, myStream->stats.rxPayloadBytes);
 #endif
-        wMEMCPY(&statResp.cmdru.stats, &myStream->stats, sizeof(tgStats_t));
-        wMEMCPY((dutRspBuf + i * sizeof(dutCmdResponse_t)), (BYTE *)&statResp, sizeof(dutCmdResponse_t));
+        memcpy(&statResp.cmdru.stats, &myStream->stats, sizeof(tgStats_t));
+        memcpy((dutRspBuf + i * (8 + sizeof(tgStats_t))), (char*) &statResp, (8 + sizeof(tgStats_t)));
         id_cnt++;
 
         // Not empty it but require to reset the entire table before test starts.
-        //wMEMSET(myStream, 0, sizeof(tgStream_t));
+        //memset(myStream, 0, sizeof(tgStream_t));
     }
 
     // mark the stream inactive
     myStream->state = WFA_STREAM_INACTIVE;
 
     printf("Sending back the statistics at recvstop\n");
-    wfaEncodeTLV(WFA_TRAFFIC_AGENT_RECV_STOP_RESP_TLV, id_cnt * sizeof(dutCmdResponse_t), dutRspBuf, respBuf);
+    wfaEncodeTLV(WFA_TRAFFIC_AGENT_RECV_STOP_RESP_TLV, id_cnt * (8 + sizeof(tgStats_t)), dutRspBuf, respBuf);
 
     /* done here */
-    *respLen = WFA_TLV_HDR_LEN + numStreams * sizeof(dutCmdResponse_t);
+    *respLen = WFA_TLV_HDR_LEN + numStreams * (8 + sizeof(tgStats_t));
 
     return WFA_SUCCESS;
 }
@@ -647,45 +590,47 @@ int wfaTGRecvStop(int len, BYTE *parms, int *respLen, BYTE *respBuf)
  * response:   inform controller for "running"
  * return:     success or failed
  */
-int wfaTGSendStart(int len, BYTE *parms, int *respLen, BYTE *respBuf)
+int wfaTGSendStart(int len, char* parms, int* respLen, char* respBuf)
 {
-    int i=0, streamid=0;
-    int numStreams = len/4;
+    int i = 0, streamid = 0;
+    int numStreams = len / 4;
     char gCmdStr[WFA_CMD_STR_SZ];
 
-    tgProfile_t *theProfile;
-    tgStream_t *myStream = NULL;
+    tgProfile_t* theProfile;
+    tgStream_t* myStream = NULL;
 
     dutCmdResponse_t staSendResp;
 
     DPRINT_INFO(WFA_OUT, "Entering tgSendStart for %i streams ...\n", numStreams);
-    for(i=0; i<numStreams; i++)
-    {
-        wMEMCPY(&streamid, parms+(4*i), 4);
+
+    for(i = 0; i < numStreams; i++) {
+        memcpy(&streamid, parms + (4 * i), 4);
         myStream = findStreamProfile(streamid);
-        if(myStream == NULL)
-        {
+
+        if(myStream == NULL) {
             staSendResp.status = STATUS_INVALID;
-            wfaEncodeTLV(WFA_TRAFFIC_AGENT_SEND_RESP_TLV, 4, (BYTE *)&staSendResp, respBuf);
+            wfaEncodeTLV(WFA_TRAFFIC_AGENT_SEND_RESP_TLV, 4, (char*) &staSendResp, respBuf);
             *respLen = WFA_TLV_HDR_LEN + 4;
+            DPRINT_INFO(WFA_OUT, "%s (%d) mystream is null\n", __FILE__, __LINE__);
             return WFA_SUCCESS;
         }
 
         theProfile = &myStream->profile;
-        if(theProfile == NULL)
-        {
+
+        if(theProfile == NULL) {
             staSendResp.status = STATUS_INVALID;
-            wfaEncodeTLV(WFA_TRAFFIC_AGENT_SEND_RESP_TLV, 4, (BYTE *)&staSendResp, respBuf);
+            wfaEncodeTLV(WFA_TRAFFIC_AGENT_SEND_RESP_TLV, 4, (char*) &staSendResp, respBuf);
             *respLen = WFA_TLV_HDR_LEN + 4;
 
+            DPRINT_INFO(WFA_OUT, "%s (%d) profile is null\n", __FILE__, __LINE__);
             return WFA_SUCCESS;
         }
 
-        if(theProfile->direction != DIRECT_SEND)
-        {
+        if(theProfile->direction != DIRECT_SEND) {
             staSendResp.status = STATUS_INVALID;
-            wfaEncodeTLV(WFA_TRAFFIC_AGENT_SEND_RESP_TLV, 4, (BYTE *)&staSendResp, respBuf);
+            wfaEncodeTLV(WFA_TRAFFIC_AGENT_SEND_RESP_TLV, 4, (char*) &staSendResp, respBuf);
             *respLen = WFA_TLV_HDR_LEN + 4;
+            DPRINT_INFO(WFA_OUT, "%s (%d) direction is invalid\n", __FILE__, __LINE__);
 
             return WFA_SUCCESS;
         }
@@ -693,82 +638,86 @@ int wfaTGSendStart(int len, BYTE *parms, int *respLen, BYTE *respBuf)
         /*
          * need to reset the stats
          */
-        wMEMSET(&myStream->stats, 0, sizeof(tgStats_t));
+        memset(&myStream->stats, 0, sizeof(tgStats_t));
 
         // mark the stream active;
         myStream->state = WFA_STREAM_ACTIVE;
 
-        switch(theProfile->profile)
-        {
-        case PROF_FILE_TX:
-        case PROF_MCAST:
-        case PROF_TRANSC:
-            gtgTransac = streamid;
-            gtgSend = streamid;
-        case PROF_CALI_RTD:
-            gtgCaliRTD = streamid;
-        case PROF_IPTV:
-            gtgSend = streamid;
-            /*
-             * singal the thread to Sending WMM traffic
-             */
+        switch(theProfile->profile) {
+            case PROF_FILE_TX:
+            case PROF_MCAST:
+            case PROF_TRANSC:
+                gtgTransac = streamid;
+                gtgSend = streamid;
 
-            wmm_thr[usedThread].thr_flag = streamid;
-            wPT_MUTEX_LOCK(&wmm_thr[usedThread].thr_flag_mutex);
-            wPT_COND_SIGNAL(&wmm_thr[usedThread].thr_flag_cond);
-            wPT_MUTEX_UNLOCK(&wmm_thr[usedThread].thr_flag_mutex);
-            usedThread++;
+            case PROF_CALI_RTD:
+                gtgCaliRTD = streamid;
 
-            *respLen = 0;
+            case PROF_IPTV:
+                gtgSend = streamid;
+                /*
+                 * singal the thread to Sending WMM traffic
+                 */
+
+                wmm_thr[usedThread].thr_flag = streamid;
+                pthread_mutex_lock(&wmm_thr[usedThread].thr_flag_mutex);
+                pthread_cond_signal(&wmm_thr[usedThread].thr_flag_cond);
+                pthread_mutex_unlock(&wmm_thr[usedThread].thr_flag_mutex);
+                usedThread++;
+
+                // NOTE: the response is created in the thread.
+
+                *respLen = 0;
+                break;
+
+            case PROF_UAPSD: {
+                int ttout = 20;
+
+                printf(" Run wfa_con timer = %d sec\n", ttout);
+                sprintf(gCmdStr, "/usr/bin/wfa_con -t %d %s", ttout, theProfile->WmmpsTagName);
+
+                if(system(gCmdStr)) {
+                    printf("Done with wfa_con\n");
+                }
+
+                staSendResp.status = STATUS_COMPLETE;
+                staSendResp.streamId = streamid;
+                myStream->stats.txFrames = 10;
+                myStream->stats.txPayloadBytes = 10000;
+                memcpy(&staSendResp.cmdru.stats, &myStream->stats, sizeof(tgStats_t));
+                wfaEncodeTLV(WFA_TRAFFIC_AGENT_SEND_RESP_TLV, 8 + sizeof(tgStats_t),
+                             (char*) &staSendResp, (char*) respBuf);
+                *respLen = WFA_TLV_HDR_LEN + 8 + sizeof(tgStats_t);
+            }
             break;
-        case PROF_UAPSD:
-        {
-            int ttout = 20;
-
-            printf(" Run wfa_con timer = %d sec\n", ttout);
-            sprintf(gCmdStr,"/usr/bin/wfa_con -t %d %s",ttout,theProfile->WmmpsTagName);
-            if(system(gCmdStr))
-                printf("Done with wfa_con\n");
-
-            staSendResp.status = STATUS_COMPLETE;
-            staSendResp.streamId = streamid;
-            myStream->stats.txFrames = 10;
-            myStream->stats.txPayloadBytes = 10000;
-            wMEMCPY(&staSendResp.cmdru.stats, &myStream->stats, sizeof(tgStats_t));
-            wfaEncodeTLV(WFA_TRAFFIC_AGENT_SEND_RESP_TLV, sizeof(dutCmdResponse_t),
-                         (BYTE *)&staSendResp, (BYTE *)respBuf);
-            *respLen = WFA_TLV_HDR_LEN + sizeof(dutCmdResponse_t);
-        }
-        break;
         } /* switch  */
     }/*  for */
 
     return WFA_SUCCESS;
 }
 
-int wfaTGReset(int len, BYTE *parms, int *respLen, BYTE *respBuf)
+int wfaTGReset(int len, char* parms, int* respLen, char* respBuf)
 {
-    dutCmdResponse_t *resetResp = &gGenericResp;
+    dutCmdResponse_t* resetResp = &gGenericResp;
     int i;
 
+    printf("enter %s\n", __FUNCTION__);
+
     /* need to reset all traffic socket fds */
-    if(btSockfd != -1)
-    {
-        wCLOSE(btSockfd);
+    if(btSockfd != -1) {
+        close(btSockfd);
         btSockfd = -1;
     }
 
-    for(i = 0; i<WFA_MAX_TRAFFIC_STREAMS; i++)
-    {
-        if(tgSockfds[i] != -1)
-        {
-            wCLOSE(tgSockfds[i]);
+    for(i = 0; i < WFA_MAX_TRAFFIC_STREAMS; i++) {
+        if(tgSockfds[i] != -1) {
+            close(tgSockfds[i]);
             tgSockfds[i] = -1;
         }
     }
 
     /* reset the timer alarm if it was armed */
-    wALARM(0);
+    alarm(0);
 
     /* just reset the flags for the command */
     gtgRecv = 0;
@@ -789,21 +738,22 @@ int wfaTGReset(int len, BYTE *parms, int *respLen, BYTE *respBuf)
     gtgWmmPS = 0;
     gtgPsPktRecvd = 0;
 
-    if(psSockfd != -1)
-    {
-        wCLOSE(psSockfd);
+    if(psSockfd != -1) {
+        close(psSockfd);
         psSockfd = -1;
     }
 
-    wMEMSET(&wmmps_info, 0, sizeof(wfaWmmPS_t));
+    memset(&wmmps_info, 0, sizeof(wfaWmmPS_t));
 
 #endif
 
     e2eResults[0] = '\0';
 
+    system("rm /tmp/spout_*");
+
     /* Also need to clean up WMM streams NOT DONE YET!*/
     slotCnt = 0;             /* reset stream profile container */
-    wMEMSET(gStreams, 0, WFA_MAX_TRAFFIC_STREAMS);
+    memset(gStreams, 0, WFA_MAX_TRAFFIC_STREAMS);
 
     /*
      * After be asked to reset, it should lower itself back to
@@ -814,7 +764,7 @@ int wfaTGReset(int len, BYTE *parms, int *respLen, BYTE *respBuf)
     /* encode a TLV for response for "complete ..." */
     resetResp->status = STATUS_COMPLETE;
     wfaEncodeTLV(WFA_TRAFFIC_AGENT_RESET_RESP_TLV, 4,
-                 (BYTE *)resetResp, respBuf);
+                 (char*) resetResp, respBuf);
     *respLen = WFA_TLV_HDR_LEN + 4;
 
     return WFA_SUCCESS;
@@ -832,9 +782,9 @@ int wfaTGReset(int len, BYTE *parms, int *respLen, BYTE *respBuf)
 /* 100 -> 10ms, 1000 -> 1ms , etc                       */
 #define WFA_KERNEL_MIN_TIMER_RES   100   /* HZ Value for 10 ms */
 
-void wfaTxSleepTime(int profile, int rate, int *sleepTime, int *throttledRate)
+void wfaTxSleepTime(int profile, int rate, int* sleepTime, int* throttledRate)
 {
-    *sleepTime=0;     /* in microseconds */
+    *sleepTime = 0;   /* in microseconds */
     /* calculate the sleep time based on frame rate */
 
     /*
@@ -844,67 +794,61 @@ void wfaTxSleepTime(int profile, int rate, int *sleepTime, int *throttledRate)
      * For WMM traffic, the framerate must also need for VO and VI.
      * the framerate 500, OS may not handle it precisely.
      */
-    switch(profile)
-    {
-    /*
-     * make it a fix rate
-     * according to test plan, it requires ~80kbps which is around 50 frames/s
-     * For other cases which may want to run experiments for very high rate,
-     * the change should accommodate the requirement.
-     */
-    case PROF_MCAST:
-        if(rate < 500 && rate >= 50)
-        {
-            *sleepTime = 100000;  /* sleep for 100 ms */
-            *throttledRate = WFA_MCAST_FRATE;
-        }
-        else
-        {
-            *sleepTime = 100000;
-            *throttledRate = rate;
-        }
-#if 0
-        *throttledRate = WFA_MCAST_FRATE;
-#endif
-        break;
-
-    /*
-     * Vendor must find ways to better adjust the speed for their own device
-     */
-    case PROF_IPTV:
-    case PROF_FILE_TX:
-        if(rate >=50 || rate == 0)
-        {
+    switch(profile) {
             /*
-             * this sleepTime indeed is now being used for time period
-             * to send packets in the throttled Rate.
-             * The idea here is that in each fixed 20 minisecond period,
-             * The device will send rate/50 (rate = packets / second),
-             * then go sleep for rest of time.
+             * make it a fix rate
+             * according to test plan, it requires ~80kbps which is around 50 frames/s
+             * For other cases which may want to run experiments for very high rate,
+             * the change should accommodate the requirement.
              */
-            *sleepTime = 20000; /* fixed 20 miniseconds */
-            *throttledRate = (rate?rate:10000)/50;
-            printf("Hi Sleep time %i, throttledRate %i\n", *sleepTime, *throttledRate);
-        }
-        else if(rate == 0)
-        {
-            *sleepTime = 20000; /* fixed 20 miniseconds */
-            *throttledRate = (rate?rate:10000)/50;
-            printf("Hi Sleep time %i, throttledRate %i\n", *sleepTime, *throttledRate);
-        }
-        else if (rate > 0 && rate <= 50) /* typically for voice */
-        {
-            *throttledRate = 1;
-            *sleepTime = 1000*1000/rate;
-        }
-        break;
-    default:
-        DPRINT_ERR(WFA_ERR, "Incorrect profile\n");
+        case PROF_MCAST:
+            if(rate < 500 && rate >= 50) {
+                *sleepTime = 100000;  /* sleep for 100 ms */
+                *throttledRate = WFA_MCAST_FRATE;
+            }
+            else {
+                *sleepTime = 100000;
+                *throttledRate = rate;
+            }
+
+            break;
+
+            /*
+             * Vendor must find ways to better adjust the speed for their own device
+             */
+        case PROF_IPTV:
+        case PROF_FILE_TX:
+            if(rate >= 50 || rate == 0) {
+                /*
+                 * this sleepTime indeed is now being used for time period
+                 * to send packets in the throttled Rate.
+                 * The idea here is that in each fixed 20 minisecond period,
+                 * The device will send rate/50 (rate = packets / second),
+                 * then go sleep for rest of time.
+                 */
+                *sleepTime = 20000; /* fixed 20 miniseconds */
+                *throttledRate = (rate ? rate : 10000) / 50;
+                printf("Hi Sleep time %i, throttledRate %i\n", *sleepTime, *throttledRate);
+            }
+            else if(rate == 0) {
+                *sleepTime = 20000; /* fixed 20 miniseconds */
+                *throttledRate = (rate ? rate : 10000) / 50;
+                printf("Hi Sleep time %i, throttledRate %i\n", *sleepTime, *throttledRate);
+            }
+            else if(rate > 0 && rate <= 50) {      /* typically for voice */
+                *throttledRate = 1;
+                *sleepTime = 1000 * 1000 / rate;
+            }
+
+            break;
+
+        default:
+            DPRINT_ERR(WFA_ERR, "Incorrect profile\n");
     }
 }
 
 #define WFA_TIME_DIFF(before, after, rtime, dtime) \
-             dtime = rtime + (after.tv_sec*1000000 + after.tv_usec) - (before.tv_sec*1000000 + before.tv_usec);
+    dtime = rtime + (after.tv_sec*1000000 + after.tv_usec) - (before.tv_sec*1000000 + before.tv_usec);
 
 void buzz_time(int delay)
 {
@@ -912,21 +856,20 @@ void buzz_time(int delay)
     int diff;
     int remain_time = 0;
 
-    wGETTIMEOFDAY(&stop, 0);
+    gettimeofday(&stop, 0);
 
     stop.tv_usec += delay;
-    if(stop.tv_usec > 1000000)
-    {
-        stop.tv_usec -=1000000;
-        stop.tv_sec +=1;
+
+    if(stop.tv_usec > 1000000) {
+        stop.tv_usec -= 1000000;
+        stop.tv_sec += 1;
     }
 
-    do
-    {
-        wGETTIMEOFDAY(&now, 0);
+    do {
+        gettimeofday(&now, 0);
         WFA_TIME_DIFF(now, stop, remain_time, diff);
     }
-    while(diff>0);
+    while(diff > 0);
 }
 
 /**************************************************/
@@ -934,54 +877,55 @@ void buzz_time(int delay)
 /**************************************************/
 
 /* This is going to be a blocking SEND till it finishes */
-int wfaSendLongFile(int mySockfd, int streamid, BYTE *aRespBuf, int *aRespLen)
+int wfaSendLongFile(int mySockfd, int streamid, char* aRespBuf, int* aRespLen)
 {
-    tgProfile_t           *theProf = NULL;
-    tgStream_t            *myStream = NULL;
+    tgProfile_t*           theProf = NULL;
+    tgStream_t*            myStream = NULL;
     struct sockaddr_in    toAddr;
-    char                  *packBuf;
+    char*                  packBuf;
     int  packLen;
     int  bytesSent;
     dutCmdResponse_t sendResp;
     int sleepTime = 0;
     int throttledRate = 0;
-    struct timeval before, after,af;
+    struct timeval before, after, af;
     int difftime = 0, counter = 0;
     struct timeval stime;
     int act_sleep_time;
-    gettimeofday(&af,0);
+    gettimeofday(&af, 0);
 
     DPRINT_INFO(WFA_OUT, "Entering sendLongFile %i\n", streamid);
 
     /* find the profile */
     myStream = findStreamProfile(streamid);
-    if(myStream == NULL)
-    {
+
+    if(myStream == NULL) {
         return WFA_FAILURE;
     }
 
     theProf = &myStream->profile;
 
-    if(theProf == NULL)
-    {
+    if(theProf == NULL) {
         return WFA_FAILURE;
     }
 
     /* If RATE is 0 which means to send as much as possible, the frame size set to max UDP length */
-    if(theProf->rate == 0)
+    if(theProf->rate == 0) {
         packLen = MAX_UDP_LEN;
-    else
+    }
+    else {
         packLen = theProf->pksize;
+    }
 
     /* allocate a buf */
-    packBuf = (char *)malloc(packLen+1);
-    wMEMSET(packBuf, 0, packLen);
+    packBuf = (char*) malloc(packLen + 1);
+    memset(packBuf, 0, packLen);
 
     /* fill in the header */
-    wSTRNCPY(packBuf, "1345678", sizeof(tgHeader_t));
+    strncpy(packBuf, "1345678", sizeof(tgHeader_t));
 
     /* initialize the destination address */
-    wMEMSET(&toAddr, 0, sizeof(toAddr));
+    memset(&toAddr, 0, sizeof(toAddr));
     toAddr.sin_family = AF_INET;
     toAddr.sin_addr.s_addr = inet_addr(theProf->dipaddr);
     toAddr.sin_port = htons(theProf->dport);
@@ -990,8 +934,7 @@ int wfaSendLongFile(int mySockfd, int streamid, BYTE *aRespBuf, int *aRespLen)
      * interval for each packet and how many packets it needs to
      * send.
      */
-    if(theProf->duration != 0)
-    {
+    if(theProf->duration != 0) {
         printf("duration %i\n", theProf->duration);
 
         /*
@@ -1007,17 +950,19 @@ int wfaSendLongFile(int mySockfd, int streamid, BYTE *aRespBuf, int *aRespLen)
          */
 
         act_sleep_time = sleepTime - adj_latency;
-        if (act_sleep_time <= 0)
+
+        if(act_sleep_time <= 0) {
             act_sleep_time = sleepTime;
+        }
 
         printf("sleep time %i act_sleep_time %i\n", sleepTime, act_sleep_time);
 
-        runLoop=1;
-        while(runLoop)
-        {
+        runLoop = 1;
+
+        while(runLoop) {
             counter++;
             /* fill in the counter */
-            int2BuffBigEndian(counter, &((tgHeader_t *)packBuf)->hdr[8]);
+            int2BuffBigEndian(counter, & ((tgHeader_t*) packBuf)->hdr[8]);
 
             /*
              * the following code is only used to slow down
@@ -1026,43 +971,40 @@ int wfaSendLongFile(int mySockfd, int streamid, BYTE *aRespBuf, int *aRespLen)
              * some limitations, purely for experiment purpose.
              * each implementation needs some fine tune to it.
              */
-            if(counter ==1)
-            {
-                wGETTIMEOFDAY(&before, NULL);
+            if(counter == 1) {
+                gettimeofday(&before, NULL);
 
                 before.tv_usec += sleepTime;
-                if(before.tv_usec > 1000000)
-                {
+
+                if(before.tv_usec > 1000000) {
                     before.tv_usec -= 1000000;
-                    before.tv_sec +=1;
+                    before.tv_sec += 1;
                 }
             }
 
-            if(throttledRate != 0)
-            {
-                if(counter%throttledRate == 0)
-                {
-                    wGETTIMEOFDAY(&after, NULL);
+            if(throttledRate != 0) {
+                if(counter % throttledRate == 0) {
+                    gettimeofday(&after, NULL);
                     difftime = wfa_itime_diff(&after, &before);
 
-                    if(difftime > adj_latency)
-                    {
+                    if(difftime > adj_latency) {
                         // too much time left, go sleep
-                        wUSLEEP(difftime-adj_latency);
+                        usleep(difftime - adj_latency);
 
-                        wGETTIMEOFDAY(&after, NULL);
+                        gettimeofday(&after, NULL);
                         difftime = wfa_itime_diff(&after, &before);
                     }
 
                     // burn the rest to absort latency
-                    if(difftime >0)
+                    if(difftime > 0) {
                         buzz_time(difftime);
+                    }
 
                     before.tv_usec += sleepTime;
-                    if(before.tv_usec > 1000000)
-                    {
+
+                    if(before.tv_usec > 1000000) {
                         before.tv_usec -= 1000000;
-                        before.tv_sec +=1;
+                        before.tv_sec += 1;
                     }
                 }
             } // otherwise, it floods
@@ -1070,40 +1012,41 @@ int wfaSendLongFile(int mySockfd, int streamid, BYTE *aRespBuf, int *aRespLen)
             /*
              * Fill the timestamp to the header.
              */
-            wGETTIMEOFDAY(&stime, NULL);
+            gettimeofday(&stime, NULL);
 
-            int2BuffBigEndian(stime.tv_sec, &((tgHeader_t *)packBuf)->hdr[12]);
-            int2BuffBigEndian(stime.tv_usec, &((tgHeader_t *)packBuf)->hdr[16]);
+            int2BuffBigEndian(stime.tv_sec, & ((tgHeader_t*) packBuf)->hdr[12]);
+            int2BuffBigEndian(stime.tv_usec, & ((tgHeader_t*) packBuf)->hdr[16]);
 
             bytesSent = wfaTrafficSendTo(mySockfd, packBuf, packLen,
-                                         (struct sockaddr *)&toAddr);
+                                         (struct sockaddr*) &toAddr);
 
-            if(bytesSent != -1)
-            {
+            if(bytesSent != -1) {
                 myStream->stats.txPayloadBytes += bytesSent;
                 myStream->stats.txFrames++ ;
             }
-            else
-            {
+            else {
                 int errsv = errno;
-                switch(errsv)
-                {
-                case EAGAIN:
-                case ENOBUFS:
-                    DPRINT_ERR(WFA_ERR, "send error\n");
-                    wUSLEEP(1000);             /* hold for 1 ms */
-                    counter-- ;
-                    myStream->stats.txFrames--;
-                    break;
-                case ECONNRESET:
-                    runLoop = 0;
-                    break;
-                case EPIPE:
-                    runLoop = 0;
-                    break;
-                default:
-                    perror("sendto: ");
-                    DPRINT_ERR(WFA_ERR, "Packet sent error\n");
+
+                switch(errsv) {
+                    case EAGAIN:
+                    case ENOBUFS:
+                        DPRINT_ERR(WFA_ERR, "send error\n");
+                        usleep(1000);             /* hold for 1 ms */
+                        counter-- ;
+                        myStream->stats.txFrames--;
+                        break;
+
+                    case ECONNRESET:
+                        runLoop = 0;
+                        break;
+
+                    case EPIPE:
+                        runLoop = 0;
+                        break;
+
+                    default:
+                        perror("sendto: ");
+                        DPRINT_ERR(WFA_ERR, "Packet sent error\n");
                 }
             }
 
@@ -1115,54 +1058,52 @@ int wfaSendLongFile(int mySockfd, int streamid, BYTE *aRespBuf, int *aRespLen)
          * It is optional.
          */
     }
-    else /* invalid parameters */
-    {
+    else {   /* invalid parameters */
         /* encode a TLV for response for "invalid ..." */
         sendResp.status = STATUS_INVALID;
         wfaEncodeTLV(WFA_TRAFFIC_AGENT_SEND_RESP_TLV, 4,
-                     (BYTE *)&sendResp, (BYTE *)aRespBuf);
+                     (char*) &sendResp, (char*) aRespBuf);
 
         /* done here */
         *aRespLen = WFA_TLV_HDR_LEN + 4;
 
-        return DONE;
+        return WFA_SUCCESS;
     }
 
     gtgSend = 0;
 
     /* free the buffer */
-    wFREE(packBuf);
+    free(packBuf);
 
     //printf("done sending long\n");
     /* return statistics */
     sendResp.status = STATUS_COMPLETE;
     sendResp.streamId = myStream->id;
-    wMEMCPY(&sendResp.cmdru.stats, &myStream->stats, sizeof(tgStats_t));
+    memcpy(&sendResp.cmdru.stats, &myStream->stats, sizeof(tgStats_t));
 
 #if 0
     DPRINT_INFO(WFA_OUT, "stream Id %u tx %u total %llu\n", myStream->id, myStream->stats.txFrames, myStream->stats.txPayloadBytes);
 #endif
 
-    wfaEncodeTLV(WFA_TRAFFIC_AGENT_SEND_RESP_TLV, sizeof(dutCmdResponse_t),
-                 (BYTE *)&sendResp, (BYTE *)aRespBuf);
+    wfaEncodeTLV(WFA_TRAFFIC_AGENT_SEND_RESP_TLV, 8 + sizeof(tgStats_t),
+                 (char*) &sendResp, (char*) aRespBuf);
 
-    *aRespLen = WFA_TLV_HDR_LEN + sizeof(dutCmdResponse_t);
+    *aRespLen = WFA_TLV_HDR_LEN + 8 + sizeof(tgStats_t);
 
-    return DONE;
+    return WFA_SUCCESS;
 }
 
 /* this only sends one packet a time */
-int wfaSendShortFile(int mySockfd, int streamid, BYTE *sendBuf, int pksize, BYTE *aRespBuf, int *aRespLen)
+int wfaSendShortFile(int mySockfd, int streamid, char* sendBuf, int pksize, char* aRespBuf, int* aRespLen)
 {
-    BYTE *packBuf = sendBuf;
+    char* packBuf = sendBuf;
     struct sockaddr_in toAddr;
-    tgProfile_t *theProf;
-    tgStream_t *myStream;
-    int packLen, bytesSent=-1;
+    tgProfile_t* theProf;
+    tgStream_t* myStream;
+    int packLen, bytesSent = -1;
     dutCmdResponse_t sendResp;
 
-    if(mySockfd == -1)
-    {
+    if(mySockfd == -1) {
         /* stop */
         gtgTransac = 0;
         gtgRecv = 0;
@@ -1170,78 +1111,77 @@ int wfaSendShortFile(int mySockfd, int streamid, BYTE *sendBuf, int pksize, BYTE
         printf("stop short traffic\n");
 
         myStream = findStreamProfile(streamid);
-        if(myStream != NULL)
-        {
+
+        if(myStream != NULL) {
             sendResp.status = STATUS_COMPLETE;
             sendResp.streamId = streamid;
-            wMEMCPY(&sendResp.cmdru.stats, &myStream->stats, sizeof(tgStats_t));
+            memcpy(&sendResp.cmdru.stats, &myStream->stats, sizeof(tgStats_t));
 
-            wfaEncodeTLV(WFA_TRAFFIC_AGENT_SEND_RESP_TLV, sizeof(dutCmdResponse_t), (BYTE *)&sendResp, aRespBuf);
+            wfaEncodeTLV(WFA_TRAFFIC_AGENT_SEND_RESP_TLV, 8 + sizeof(tgStats_t), (char*) &sendResp, aRespBuf);
 
-            *aRespLen = WFA_TLV_HDR_LEN + sizeof(dutCmdResponse_t);
+            *aRespLen = WFA_TLV_HDR_LEN + 8 + sizeof(tgStats_t);
         }
 
-        return DONE;
+        return WFA_SUCCESS;
     }
 
     /* find the profile */
     myStream = findStreamProfile(streamid);
 
-    if(myStream == NULL)
-    {
+    if(myStream == NULL) {
         return WFA_FAILURE;
     }
 
     theProf = &myStream->profile;
-    if(theProf == NULL)
-    {
+
+    if(theProf == NULL) {
         return WFA_FAILURE;
     }
 
-    if(pksize == 0)
+    if(pksize == 0) {
         packLen = theProf->pksize;
-    else
+    }
+    else {
         packLen = pksize;
+    }
 
-    wMEMSET(&toAddr, 0, sizeof(toAddr));
+    memset(&toAddr, 0, sizeof(toAddr));
     toAddr.sin_family = AF_INET;
     toAddr.sin_addr.s_addr = inet_addr(theProf->sipaddr);
     toAddr.sin_port = htons(theProf->sport);
 
-    if(gtgRecv && gtgTransac)
-    {
+    if(gtgRecv && gtgTransac) {
         toAddr.sin_addr.s_addr = inet_addr(theProf->sipaddr);
         toAddr.sin_port = htons(theProf->sport);
     }
-    else if(gtgSend && gtgTransac)
-    {
+    else if(gtgSend && gtgTransac) {
         toAddr.sin_addr.s_addr = inet_addr(theProf->dipaddr);
         toAddr.sin_port = htons(theProf->dport);
     }
 
-    int2BuffBigEndian(myStream->stats.txFrames, &((tgHeader_t *)packBuf)->hdr[8]);
+    int2BuffBigEndian(myStream->stats.txFrames, & ((tgHeader_t*) packBuf)->hdr[8]);
 
-    if(mySockfd != -1)
-        bytesSent = wfaTrafficSendTo(mySockfd, (char *)packBuf, packLen, (struct sockaddr *)&toAddr);
+    if(mySockfd != -1) {
+        bytesSent = wfaTrafficSendTo(mySockfd, (char*) packBuf, packLen, (struct sockaddr*) &toAddr);
+    }
 
-    if(bytesSent != -1)
-    {
+    if(bytesSent != -1) {
         myStream->stats.txFrames++;
         myStream->stats.txPayloadBytes += bytesSent;
     }
-    else
-    {
+    else {
         int errsv = errno;
-        switch(errsv)
-        {
-        case EAGAIN:
-        case ENOBUFS:
-            DPRINT_ERR(WFA_ERR, "send error\n");
-            wUSLEEP(1000);             /* hold for 1 ms */
-            myStream->stats.txFrames--;
-            break;
-        default:
-            ;;
+
+        switch(errsv) {
+            case EAGAIN:
+            case ENOBUFS:
+                DPRINT_ERR(WFA_ERR, "send error\n");
+                usleep(1000);             /* hold for 1 ms */
+                myStream->stats.txFrames--;
+                break;
+
+            default:
+                ;;
         }
     }
 
@@ -1251,43 +1191,41 @@ int wfaSendShortFile(int mySockfd, int streamid, BYTE *sendBuf, int pksize, BYTE
 }
 
 /* always receive from a specified IP address and Port */
-int wfaRecvFile(int mySockfd, int streamid, char *recvBuf)
+int wfaRecvFile(int mySockfd, int streamid, char* recvBuf)
 {
     /* how many packets are received */
-    char *packBuf = recvBuf;
+    char* packBuf = recvBuf;
     struct sockaddr_in fromAddr;
-    tgProfile_t *theProf;
-    tgStream_t *myStream;
+    tgProfile_t* theProf;
+    tgStream_t* myStream;
     unsigned int bytesRecvd;
     int lostPkts;
 
     /* find the profile */
     myStream = findStreamProfile(streamid);
-    if(myStream == NULL)
-    {
+
+    if(myStream == NULL) {
         return WFA_ERROR;
     }
 
     theProf = &myStream->profile;
-    if(theProf == NULL)
-    {
+
+    if(theProf == NULL) {
         return WFA_ERROR;
     }
 
-    wMEMSET(packBuf, 0, MAX_UDP_LEN);
+    memset(packBuf, 0, MAX_UDP_LEN);
 
-    wMEMSET(&fromAddr, 0, sizeof(fromAddr));
+    memset(&fromAddr, 0, sizeof(fromAddr));
     fromAddr.sin_family = AF_INET;
     fromAddr.sin_addr.s_addr = inet_addr(theProf->dipaddr);
     fromAddr.sin_port = htons(theProf->dport);
 
-    if(gtgRecv && gtgTransac)
-    {
+    if(gtgRecv && gtgTransac) {
         fromAddr.sin_addr.s_addr = inet_addr(theProf->sipaddr);
         fromAddr.sin_port = htons(theProf->sport);
     }
-    else if(gtgSend && gtgTransac)
-    {
+    else if(gtgSend && gtgTransac) {
         fromAddr.sin_addr.s_addr = inet_addr(theProf->dipaddr);
         fromAddr.sin_port = htons(theProf->dport);
     }
@@ -1295,26 +1233,26 @@ int wfaRecvFile(int mySockfd, int streamid, char *recvBuf)
     /* it is always to receive at least one packet, in case more in the
        queue, just pick them up.
      */
-    bytesRecvd = wfaTrafficRecv(mySockfd, packBuf, (struct sockaddr *)&fromAddr);
-    if(bytesRecvd != -1)
-    {
+    bytesRecvd = wfaTrafficRecv(mySockfd, packBuf, (struct sockaddr*) &fromAddr);
+
+    if(bytesRecvd != -1) {
         myStream->stats.rxFrames++;
-        myStream->stats.rxPayloadBytes +=bytesRecvd;
+        myStream->stats.rxPayloadBytes += bytesRecvd;
 
         /*
          *  Get the lost packet count
          */
-        lostPkts = bigEndianBuff2Int(&((tgHeader_t *)packBuf)->hdr[8]) - 1 - myStream->lastPktSN;
+        lostPkts = bigEndianBuff2Int(& ((tgHeader_t*) packBuf)->hdr[8]) - 1 - myStream->lastPktSN;
         myStream->stats.lostPkts += lostPkts;
-        myStream->lastPktSN = bigEndianBuff2Int(&((tgHeader_t *)packBuf)->hdr[8]);
+        myStream->lastPktSN = bigEndianBuff2Int(& ((tgHeader_t*) packBuf)->hdr[8]);
     }
-    else
-    {
+    else {
 #if 0
         DPRINT_ERR(WFA_ERR, "Packet received error\n");
         perror("receive error");
 #endif
     }
+
     return (bytesRecvd);
 }
 
@@ -1323,145 +1261,159 @@ int wfaRecvFile(int mySockfd, int streamid, char *recvBuf)
 
 void wfaSleepMilsec(int milSec)
 {
-    if (milSec >0)
-    usleep(milSec * 1000);
+    if(milSec > 0) {
+        usleep(milSec * 1000);
+    }
 }
 
-/* send limite bitrate data only 
+/* send limite bitrate data only
   Condition under Win7:
    payload <= 1000
    rate    <= 3500
 
 
 */
-int wfaSendBitrateData(int mySockfd, int streamId, BYTE *pRespBuf, int *pRespLen)
+int wfaSendBitrateData(int mySockfd, int streamId, char* pRespBuf, int* pRespLen)
 {
-    tgProfile_t           *theProf = findTGProfile(streamId);
-    tgStream_t            *myStream =findStreamProfile(streamId);
+    tgProfile_t*           theProf = findTGProfile(streamId);
+    tgStream_t*            myStream = findStreamProfile(streamId);
     int                   ret = WFA_SUCCESS;
     struct sockaddr_in    toAddr;
-    char                  *packBuf=NULL; 
+    char*                  packBuf = NULL;
     int                   packLen, bytesSent, rate;
-    int                   sleepTimePerSent = 0, nOverTimeCount = 0, nDuration=0, nOverSend=0;
-    unsigned long long int sleepTotal=0, extraTimeSpendOnSending=0;   /* sleep mil-sec per sending  */
-    int                   counter = 0, i;     /*  frame data sending count */
+    int                   sleepTimePerSent = 0, nOverTimeCount = 0, nDuration = 0, nOverSend = 0;
+    unsigned long long int sleepTotal = 0, extraTimeSpendOnSending = 0; /* sleep mil-sec per sending  */
+    int                   counter = 0, i, iSleep;     /*  frame data sending count */
     unsigned long         difftime;
     dutCmdResponse_t      sendResp;
 
     //int throttledRate = 0;
-    struct timeval        before, after; 
+    struct timeval        before, after, stime;
 
     DPRINT_INFO(WFA_OUT, "wfaSendBitrateData entering\n");
+
     /* error check section  */
-    if ( (mySockfd < 0) || (streamId < 0) || ( pRespBuf == NULL) 
-            || ( pRespLen == NULL) )
-    {
+    if((mySockfd < 0) || (streamId < 0) || (pRespBuf == NULL)
+            || (pRespLen == NULL)) {
         DPRINT_INFO(WFA_OUT, "wfaSendBitrateData pass-in parameter err mySockfd=%i streamId=%i pRespBuf=0x%x pRespLen=0x%x\n",
-            mySockfd,streamId,pRespBuf,pRespLen );
-        ret= WFA_FAILURE;
+                    mySockfd, streamId, *pRespBuf, *pRespLen);
+        ret = WFA_FAILURE;
         goto errcleanup;
     }
 
-    if ( theProf == NULL || myStream == NULL)
-    {
-        DPRINT_INFO(WFA_OUT, "wfaSendBitrateData parameter err in NULL pt theProf=%l myStream=%l \n",
-            theProf, myStream);
-        ret= WFA_FAILURE;
-        goto errcleanup;
-    }
-    if (theProf->rate == 0 || theProf->duration == 0)
-    {  /*  rate == 0 means unlimited to push data out which is not this routine to do */
-        DPRINT_INFO(WFA_OUT, "wfaSendBitrateData usage error, bitrate=%i or duration=%i \n" , 
-            theProf->rate, theProf->duration);
-        ret= WFA_FAILURE;
+    if(theProf == NULL || myStream == NULL) {
+        DPRINT_INFO(WFA_OUT, "wfaSendBitrateData parameter err in NULL pt theProf=%p myStream=%p \n",
+                    theProf, myStream);
+        ret = WFA_FAILURE;
         goto errcleanup;
     }
 
-    if ((theProf->rate > 3500) || (theProf->pksize > 1000))
-    {
+    if(theProf->rate == 0 || theProf->duration == 0) {
+        /*  rate == 0 means unlimited to push data out which is not this routine to do */
+        DPRINT_INFO(WFA_OUT, "wfaSendBitrateData usage error, bitrate=%i or duration=%i \n" ,
+                    theProf->rate, theProf->duration);
+        ret = WFA_FAILURE;
+        goto errcleanup;
+    }
+
+    if((theProf->rate > 3500) || (theProf->pksize > 1000)) {
         DPRINT_INFO(WFA_OUT, "wfaSendBitrateData Warning, must set total streams rate<=10000 and payload<=1000; stream bitrate may not meet\n");
     }
 
     /* calculate bitrate asked */
-    if ( (rate = theProf->pksize * theProf->rate * 8) > WFA_SEND_FIX_BITRATE_MAX)
-    {
-        DPRINT_INFO(WFA_OUT, "wfaSendBitrateData over birate can do in the routine, req bitrate=%l \n",rate);
-        ret= WFA_FAILURE;
+    if((rate = theProf->pksize * theProf->rate * 8) > WFA_SEND_FIX_BITRATE_MAX) {
+        DPRINT_INFO(WFA_OUT, "wfaSendBitrateData over birate can do in the routine, req bitrate=%d \n", rate);
+        ret = WFA_FAILURE;
         goto errcleanup;
     }
+
     /* alloc sending buff  */
     //packLen = (theProf->pksize * theProf->rate)/ WFA_SEND_FIX_BITRATE_FRAMERATE ;
     packLen = theProf->pksize;
-    packBuf = (char *)malloc(packLen+4);
-    if ( packBuf == NULL)
-    {
+    packBuf = (char*) malloc(packLen + 4);
+
+    if(packBuf == NULL) {
         DPRINT_INFO(WFA_OUT, "wfaSendBitrateData malloc err \n");
-        ret= WFA_FAILURE;
+        ret = WFA_FAILURE;
         goto errcleanup;
     }
+
     memset(packBuf, 0, packLen + 4);
+    /* fill in the header */
+    strncpy(packBuf, "1345678", sizeof(tgHeader_t));
     /*  initialize the destination address  */
     memset(&toAddr, 0, sizeof(toAddr));
     toAddr.sin_family = AF_INET;
     toAddr.sin_addr.s_addr = inet_addr(theProf->dipaddr);
-    toAddr.sin_port = htons(theProf->dport); 
+    toAddr.sin_port = htons(theProf->dport);
 
     /*  set sleep time per sending */
-    if ( theProf->rate < 100  )
-        sleepTimePerSent =  WFA_SEND_FIX_BITRATE_SLEEP_PER_SEND  +1; 
-    else sleepTimePerSent = WFA_SEND_FIX_BITRATE_SLEEP_PER_SEND;
+    if(theProf->rate < 100) {
+        sleepTimePerSent =  WFA_SEND_FIX_BITRATE_SLEEP_PER_SEND  + 1;
+    }
+    else {
+        sleepTimePerSent = WFA_SEND_FIX_BITRATE_SLEEP_PER_SEND;
+    }
 
-    runLoop=1; /* global defined share with thread routine, should remove it later  */
-    while ( runLoop)
-    {
-        int iSleep = 0;
+    runLoop = 1; /* global defined share with thread routine, should remove it later  */
+
+    while(runLoop) {
+        iSleep = 1;
         gettimeofday(&before, NULL);
+
         /* send data per second loop */
-        for ( i=0; i<= (theProf->rate); i++)
-        {
-           counter++;
-           iSleep++;
-           /* fill in the counter */
-           int2BuffBigEndian(counter, &((tgHeader_t *)packBuf)->hdr[8]);
-           bytesSent = wfaTrafficSendTo(mySockfd, packBuf, packLen, 
-                 (struct sockaddr *)&toAddr);
-           if(bytesSent != -1)
-           {
-               myStream->stats.txPayloadBytes += bytesSent; 
-               myStream->stats.txFrames++ ;
+        for(i = 0; i <= (theProf->rate); i++) {
+            counter++;
+            /* fill in the counter */
+            int2BuffBigEndian(counter, & ((tgHeader_t*) packBuf)->hdr[8]);
+            /*
+             * Fill the timestamp to the header.
+            */
+            gettimeofday(&stime, NULL);
+            int2BuffBigEndian(stime.tv_sec, &((tgHeader_t*)packBuf)->hdr[12]);
+            int2BuffBigEndian(stime.tv_usec, &((tgHeader_t*)packBuf)->hdr[16]);
+            bytesSent = wfaTrafficSendTo(mySockfd, packBuf, packLen,
+                                         (struct sockaddr*) &toAddr);
+
+            if(bytesSent != -1) {
+                myStream->stats.txPayloadBytes += bytesSent;
+                myStream->stats.txFrames++ ;
             }
-           else
-           {
-               counter--;
-               wfaSleepMilsec(1);
-               
-               sleepTotal = sleepTotal + (unsigned long long int) 1;
-               DPRINT_INFO(WFA_OUT, "wfaSendBitrateData wfaTrafficSendTo call ERR counter=%i i=%i; send busy, sleep %i MilSec then send\n", counter, i, sleepTimePerSent);
-               i--;
-           }
-           /*  sleep per batch sending */
-           if ( i == (theProf->rate/10) * iSleep)
-           {
-              wfaSleepMilsec(5);
-              sleepTotal = sleepTotal + (unsigned long long int) 5;
-              iSleep++;
-           }
+            else {
+                counter--;
+                wfaSleepMilsec(1);
+
+                sleepTotal = sleepTotal + (unsigned long long int) 1;
+                DPRINT_INFO(WFA_OUT, "wfaSendBitrateData wfaTrafficSendTo call ERR counter=%i i=%i; send busy, sleep %i MilSec then send\n", counter, i, sleepTimePerSent);
+                i--;
+            }
+
+            /*  sleep per batch sending */
+            if(i == (theProf->rate / 50) * iSleep) {
+                wfaSleepMilsec(10);
+                sleepTotal = sleepTotal + (unsigned long long int) 5;
+                iSleep++;
+            }
 
 
         }// for loop per second sending
-        iSleep = 0;
+
         nDuration++;
 
         /*calculate second rest part need to sleep  */
         gettimeofday(&after, NULL);
         difftime = wfa_itime_diff(&before, &after);
-        if ( difftime < 0 || difftime >= 1000000 )
-        {/* over time used, no sleep, go back to send */
+
+        if(difftime < 0 || difftime >= 1000000) {
+            /* over time used, no sleep, go back to send */
             nOverTimeCount++;
+
             //if (difftime > 1200000 )
-               //DPRINT_INFO(WFA_OUT, "wfaSendBitrateData Warning difftime=%i nDuration=%i\n",difftime, nDuration);
-            if ( difftime > 1000000)
+            //DPRINT_INFO(WFA_OUT, "wfaSendBitrateData Warning difftime=%i nDuration=%i\n",difftime, nDuration);
+            if(difftime > 1000000) {
                 extraTimeSpendOnSending += (difftime - 1000000);
+            }
+
             wfaSleepMilsec(1);
             sleepTotal++;
             continue;
@@ -1469,64 +1421,68 @@ int wfaSendBitrateData(int mySockfd, int streamId, BYTE *pRespBuf, int *pRespLen
 
         /* difftime < 1 sec case, use sleep to catchup time as 1 sec per sending  */
         /*  check with accumulated extra time spend on previous sending, difftime < 1 sec case */
-        if (extraTimeSpendOnSending > 0)
-        {
-            if ( extraTimeSpendOnSending > 1000000 - difftime )
-            {/* reduce sleep time to catch up over all on time sending   */
+        if(extraTimeSpendOnSending > 0) {
+            if(extraTimeSpendOnSending > 1000000 - difftime) {
+                /* reduce sleep time to catch up over all on time sending   */
                 extraTimeSpendOnSending = (extraTimeSpendOnSending - (1000000 - difftime));
                 wfaSleepMilsec(5);
                 sleepTotal = sleepTotal + (unsigned long long int) 5;
                 continue;
             }
-            else
-            {  /* usec used to   */
-                difftime =(unsigned long)( difftime - extraTimeSpendOnSending);
-                extraTimeSpendOnSending = 0; 
+            else {
+                /* usec used to   */
+                difftime = (unsigned long)(difftime - extraTimeSpendOnSending);
+                extraTimeSpendOnSending = 0;
             }
         }
-        
-        difftime = difftime/1000; // convert to mil-sec
 
-        if(1000 - difftime > 0)
-        {/*  only sleep if there is extrac time with in the second did not spend on sending */
+        difftime = difftime / 1000; // convert to mil-sec
+
+        if(1000 - difftime > 0) {
+            /*  only sleep if there is extrac time with in the second did not spend on sending */
             wfaSleepMilsec(1000 - difftime);
             sleepTotal = sleepTotal + (unsigned long long int)(1000 - difftime);
         }
-        
-        if ( theProf->duration < nDuration)
-        {
+
+        if(theProf->duration < nDuration) {
             nOverSend++;
         }
 
     }// while loop
 
-    if (packBuf) free(packBuf);
+    if(packBuf) {
+        free(packBuf);
+    }
+
     /* return statistics */
     sendResp.status = STATUS_COMPLETE;
     sendResp.streamId = myStream->id;
-    
-    memcpy(&sendResp.cmdru.stats, &myStream->stats, sizeof(tgStats_t)); 
 
-    wfaEncodeTLV(WFA_TRAFFIC_AGENT_SEND_RESP_TLV, sizeof(dutCmdResponse_t), 
-                 (BYTE *)&sendResp, (BYTE *)pRespBuf);
+    memcpy(&sendResp.cmdru.stats, &myStream->stats, sizeof(tgStats_t));
 
-    *pRespLen = WFA_TLV_HDR_LEN + sizeof(dutCmdResponse_t);
+    wfaEncodeTLV(WFA_TRAFFIC_AGENT_SEND_RESP_TLV, 8 + sizeof(tgStats_t),
+                 (char*) &sendResp, (char*) pRespBuf);
 
-    extraTimeSpendOnSending = extraTimeSpendOnSending/1000;
-    DPRINT_INFO(WFA_OUT, "*** wfg_tg.cpp wfaSendBitrateData Count=%i txFrames=%i totalByteSent=%i sleepTotal=%llu milSec extraTimeSpendOnSending=%llu nOverTimeCount=%d nOverSend=%i rate=%d nDuration=%d ***\n", 
-        counter, (myStream->stats.txFrames),(unsigned int) (myStream->stats.txPayloadBytes), sleepTotal,extraTimeSpendOnSending, nOverTimeCount, nOverSend, theProf->rate , nDuration);
+    *pRespLen = WFA_TLV_HDR_LEN + 8 + sizeof(tgStats_t);
+
+    extraTimeSpendOnSending = extraTimeSpendOnSending / 1000;
+    DPRINT_INFO(WFA_OUT, "*** wfg_tg.cpp wfaSendBitrateData Count=%i txFrames=%i totalByteSent=%i sleepTotal=%llu milSec extraTimeSpendOnSending=%llu nOverTimeCount=%d nOverSend=%i rate=%d nDuration=%d ***\n",
+                counter, (myStream->stats.txFrames), (unsigned int)(myStream->stats.txPayloadBytes), sleepTotal, extraTimeSpendOnSending, nOverTimeCount, nOverSend, theProf->rate , nDuration);
     wfaSleepMilsec(1000);
     return ret;
 
 errcleanup:
+
     /* encode a TLV for response for "invalid ..." */
-    if (packBuf) free(packBuf);
+    if(packBuf) {
+        free(packBuf);
+    }
 
     sendResp.status = STATUS_INVALID;
-    wfaEncodeTLV(WFA_TRAFFIC_AGENT_SEND_RESP_TLV, 4, 
-                 (BYTE *)&sendResp, (BYTE *)pRespBuf);
+    wfaEncodeTLV(WFA_TRAFFIC_AGENT_SEND_RESP_TLV, 4,
+                 (char*) &sendResp, (char*) pRespBuf);
     /* done here */
-    *pRespLen = WFA_TLV_HDR_LEN + 4; 
+    *pRespLen = WFA_TLV_HDR_LEN + 4;
 
     return ret;
 }/*  wfaSendBitrateData  */

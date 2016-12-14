@@ -23,6 +23,8 @@
  */
 #ifndef _WFA_TYPES_H
 #define _WFA_TYPES_H
+#include <inttypes.h>
+#include <stdbool.h>
 
 #define WFA_IF_NAME_LEN 16
 #define WFA_VERSION_LEN 32
@@ -55,9 +57,6 @@
 #define DIR_BIDIR 3
 #endif
 
-typedef unsigned short WORD;
-typedef unsigned char BYTE;
-
 enum _response_staus
 {
     STATUS_RUNNING = 0x0001,
@@ -65,14 +64,6 @@ enum _response_staus
     STATUS_ERROR = 0x0003,
     STATUS_COMPLETE = 0x0004,
 };
-
-typedef int BOOL;
-
-#ifndef    TRUE
-#define    FALSE       -1
-#define    TRUE        0
-#define    DONE        1
-#endif
 
 typedef enum returnTypes
 {

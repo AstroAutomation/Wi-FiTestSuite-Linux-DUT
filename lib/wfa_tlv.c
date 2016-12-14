@@ -1,6 +1,6 @@
 /****************************************************************************
 *
-* Copyright (c) 2015 Wi-Fi Alliance
+* Copyright (c) 2016 Wi-Fi Alliance
 *
 * Permission to use, copy, modify, and/or distribute this software for any
 * purpose with or without fee is hereby granted, provided that the above
@@ -39,14 +39,16 @@ extern unsigned short wfa_defined_debug;
  *
  * output: tlv_data - encoded TLV packet buffer. Caller must allocate the buffer
  */
-BOOL wfaEncodeTLV(WORD the_tag, WORD the_len, BYTE *the_value, BYTE *tlv_data)
+bool wfaEncodeTLV(uint16_t the_tag, uint16_t the_len, char* the_value, char* tlv_data)
 {
-    void *data = tlv_data;
+    wfaTLV* data = (wfaTLV*) tlv_data;
+    data->separator = WFA_TLV_SEPARATOR;
+    data->tag = the_tag;
+    data->len = the_len;
 
-    ((wfaTLV *)data)->tag = the_tag;
-    ((wfaTLV *)data)->len = the_len;
-    if(the_value != NULL && the_len != 0)
-        wMEMCPY((data+4), (BYTE *)the_value, the_len);
+    if(the_value != NULL && the_len != 0) {
+        memcpy((tlv_data + WFA_TLV_HDR_LEN), the_value, the_len);
+    }
 
     return WFA_SUCCESS;
 }
@@ -60,24 +62,37 @@ BOOL wfaEncodeTLV(WORD the_tag, WORD the_len, BYTE *the_value, BYTE *tlv_data)
  *         pvalue - value buffer, caller must allocate the buffer
  */
 
-BOOL wfaDecodeTLV(BYTE *tlv_data, int tlv_len, WORD *ptag, int *pval_len, BYTE *pvalue)
+bool wfaDecodeTLV(char* tlv_data, int tlv_len, uint16_t* ptag, int* pval_len, char* pvalue)
 {
-    wfaTLV *data = (wfaTLV *)tlv_data;
+    wfaTLV* data = (wfaTLV*) tlv_data;
+    uint16_t pseparator;
 
-    if(pvalue == NULL)
-    {
+    if(pvalue == NULL || tlv_data == NULL) {
         DPRINT_ERR(WFA_ERR, "Parm buf invalid\n");
         return WFA_FAILURE;
     }
+
+    pseparator = data->separator;
     *ptag = data->tag;
     *pval_len = data->len;
 
-    if(tlv_len < *pval_len)
+    if(pseparator != WFA_TLV_SEPARATOR) {
+        DPRINT_ERR(WFA_ERR, "packet has no separator\n");
         return WFA_FAILURE;
+    }
 
-    if(*pval_len != 0 && *pval_len < MAX_PARMS_BUFF)
-    {
-        wMEMCPY(pvalue, tlv_data+4, *pval_len);
+    DPRINT_INFO(WFA_OUT, "%s\n", __FUNCTION__);
+
+    if(tlv_len < *pval_len) {
+        DPRINT_ERR(WFA_ERR, "length invalid\n");
+        return WFA_FAILURE;
+    }
+
+    if(*pval_len != 0 && *pval_len < MAX_PARMS_BUFF) {
+        memcpy(pvalue, &tlv_data[WFA_TLV_HDR_LEN], *pval_len);
+    }
+    else {
+        DPRINT_ERR(WFA_ERR, "overflow: %d\n", *pval_len);
     }
 
     return WFA_SUCCESS;
@@ -89,12 +104,13 @@ BOOL wfaDecodeTLV(BYTE *tlv_data, int tlv_len, WORD *ptag, int *pval_len, BYTE *
  * return: the TLV type.
  */
 
-WORD wfaGetTLVTag(BYTE *tlv_data)
+uint16_t wfaGetTLVTag(char* tlv_data)
 {
-    wfaTLV *ptlv = (wfaTLV *)tlv_data;
+    wfaTLV* ptlv = (wfaTLV*) tlv_data;
 
-    if(ptlv != NULL)
+    if(ptlv != NULL) {
         return ptlv->tag;
+    }
 
     return WFA_SUCCESS;
 }
@@ -105,12 +121,13 @@ WORD wfaGetTLVTag(BYTE *tlv_data)
  * Output: tlv_data - a TLV buffer, caller must allocate this buffer.
  */
 
-BOOL wfaSetTLVTag(WORD new_tag, BYTE *tlv_data)
+bool wfaSetTLVTag(uint16_t new_tag, char* tlv_data)
 {
-    wfaTLV *ptlv = (wfaTLV *)tlv_data;
+    wfaTLV* ptlv = (wfaTLV*) tlv_data;
 
-    if(tlv_data == NULL)
+    if(tlv_data == NULL) {
         return WFA_FAILURE;
+    }
 
     ptlv->tag = new_tag;
 
@@ -123,12 +140,13 @@ BOOL wfaSetTLVTag(WORD new_tag, BYTE *tlv_data)
  * return: the value length.
  */
 
-WORD wfaGetTLVLen(BYTE *tlv_data)
+uint16_t wfaGetTLVLen(char* tlv_data)
 {
-    wfaTLV *ptlv = (wfaTLV *)tlv_data;
+    wfaTLV* ptlv = (wfaTLV*) tlv_data;
 
-    if(tlv_data == NULL)
+    if(tlv_data == NULL) {
         return WFA_FAILURE;
+    }
 
     return ptlv->len;
 }
@@ -140,12 +158,13 @@ WORD wfaGetTLVLen(BYTE *tlv_data)
  * output: pvalue - the value buffer, caller must allocate it.
  */
 
-BOOL wfaGetTLVvalue(int value_len, BYTE *tlv_data, BYTE *pvalue)
+bool wfaGetTLVvalue(int value_len, char* tlv_data, char* pvalue)
 {
-    if(tlv_data == NULL)
+    if(tlv_data == NULL) {
         return WFA_FAILURE;
+    }
 
-    wMEMCPY(pvalue, tlv_data+WFA_TLV_HEAD_LEN, value_len);
+    memcpy(pvalue, tlv_data + WFA_TLV_HEAD_LEN, value_len);
 
     return WFA_SUCCESS;
 }

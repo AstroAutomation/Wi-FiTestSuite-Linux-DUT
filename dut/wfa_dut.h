@@ -1,6 +1,6 @@
 /****************************************************************************
 *
-* Copyright (c) 2015 Wi-Fi Alliance
+* Copyright (c) 2016 Wi-Fi Alliance
 *
 * Permission to use, copy, modify, and/or distribute this software for any
 * purpose with or without fee is hereby granted, provided that the above
@@ -16,5 +16,13 @@
 *
 *****************************************************************************/
 
+#ifndef WFA_DUT_AGENT_H
+#define WFA_DUT_AGENT_H
 
-#define WFA_DUT_AGENT
+#include <inttypes.h>
+#include <sys/time.h>
+
+void init_thr_flag();
+void wfa_dut_init(char** tBuf, char** rBuf, char** paBuf, char** cBuf, struct timeval** timerp);
+
+#endif // WFA_DUT_AGENT_H

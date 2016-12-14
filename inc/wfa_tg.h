@@ -24,7 +24,9 @@
 #ifndef _WFA_TG_H
 #define _WFA_TG_H
 
+#include <inttypes.h>
 #include <sys/time.h>
+#include "wfa_nw_al.h"
 
 /* maximum number of streams to support */
 #define IPV4_ADDRESS_STRING_LEN    16
@@ -126,119 +128,105 @@
 #define WFA_G_CODEC_RATE            50       /* G.729 50 pkt per second  = 20 ms interval */
 #define WFA_DSCP_TABLE_SIZE         15
 
-typedef struct _tg_stats
-{
-    unsigned int txFrames;
-    unsigned int rxFrames;
-    unsigned long long txPayloadBytes;
-    unsigned long long rxPayloadBytes;
-    unsigned int outOfSequenceFrames;
-    unsigned int lostPkts;        /* voice over wi-fi */
-    unsigned long jitter;         /* voice over wi-fi */
+typedef struct _tg_stats {
+    uint32_t txFrames;
+    uint32_t rxFrames;
+    uint64_t txPayloadBytes;
+    uint64_t rxPayloadBytes;
+    uint32_t outOfSequenceFrames;
+    uint32_t lostPkts;        /* voice over wi-fi */
+    uint64_t jitter;         /* voice over wi-fi */
 } tgStats_t;
 
-typedef struct _e2e_stats
-{
-    int seqnum;
-    int lsec;
-    int lusec;
-    int rsec;
-    int rusec;
+typedef struct _e2e_stats {
+    int32_t seqnum;
+    int32_t lsec;
+    int32_t lusec;
+    int32_t rsec;
+    int32_t rusec;
 } tgE2EStats_t;
 
-typedef struct _tg_profile
-{
-    int  profile;                           /* profile id                    */
-    int  direction;
+typedef struct _tg_profile {
+    int32_t  profile;                           /* profile id                    */
+    int32_t  direction;
     char dipaddr[IPV4_ADDRESS_STRING_LEN];  /* destination/remote ip address */
-    int  dport;
+    int32_t  dport;
     char sipaddr[IPV4_ADDRESS_STRING_LEN];  /* source/local ip address       */
-    int  sport;
-    int  rate;
-    int  duration;
-    int  pksize;
-    short trafficClass;      /* VO, VI, BK, BE */
-    int  startdelay;
-    int  maxcnt;
+    int32_t  sport;
+    int32_t  rate;
+    int32_t  duration;
+    int32_t  pksize;
+    int16_t trafficClass;      /* VO, VI, BK, BE */
+    int32_t  startdelay;
+    int32_t  maxcnt;
     char WmmpsTagName[10];//Aaron's//Store the test case name
 } tgProfile_t;
 
-typedef struct _tg_stream
-{
-    int id;
-    int sockfd;
-    int tblidx;
-    int lastPktSN;        /* use for Jitter calculation */
-    int fmInterval;
-    int rxTimeLast;       /* use for pkLost             */
-    int state;            /* indicate if the stream being active */
+typedef struct _tg_stream {
+    int32_t id;
+    int32_t sockfd;
+    int32_t tblidx;
+    int32_t lastPktSN;        /* use for Jitter calculation */
+    int32_t fmInterval;
+    int32_t rxTimeLast;       /* use for pkLost             */
+    int32_t state;            /* indicate if the stream being active */
     tgProfile_t profile;
     tgStats_t stats;
 } tgStream_t;
 
-typedef struct _traffic_header
-{
+typedef struct _traffic_header {
     char hdr[20];   /* always wfa */
 } tgHeader_t;
 
-typedef struct _tg_wmm
-{
-    int thr_flag;    /* this is used to indicate stream id */
-    int stop_flag;    /* this is used to indicate stream id */
-#ifndef _WINDOWS
+typedef struct _tg_wmm {
+    int32_t thr_flag;    /* this is used to indicate stream id */
+    int32_t stop_flag;    /* this is used to indicate stream id */
     pthread_t thr;
-    int thr_id;
+    int32_t thr_id;
     pthread_cond_t thr_flag_cond;
     pthread_cond_t thr_stop_cond;
     pthread_mutex_t thr_flag_mutex;
     pthread_mutex_t thr_stop_mutex;
-#else
-    HANDLE thr;
-    DWORD thr_id;
-    int timerid;
-    HANDLE thr_flag_mutex;
-    HANDLE thr_stop_mutex;
-#endif
 } tgWMM_t;
 
-typedef int (*StationStateFunctionPtr)( char, int,int *); //PS,sleep period,state
+typedef int ( *StationStateFunctionPtr ) ( char, int,int* ); //PS,sleep period,state
 
-typedef struct station_state_table
-{
+typedef struct station_state_table {
     StationStateFunctionPtr statefunc;
     char                    pw_offon;
-    int                     sleep_period;
+    int32_t                     sleep_period;
 } StationProcStatetbl_t;
 
-typedef int (*stationRecvStateFunctionPtr)(unsigned int *, int,int * ); //Recieved message buffer, length,state
+typedef int ( *stationRecvStateFunctionPtr ) ( uint32_t*, int,int* ); //Recieved message buffer, length,state
 
-typedef struct console_rcv_state_table
-{
+typedef struct console_rcv_state_table {
     stationRecvStateFunctionPtr statefunc;
 } StationRecvProcStatetbl_t;
 
-typedef struct _tg_thr_data
-{
-    int tid;
-    StationProcStatetbl_t  *state;
-    int state_num;
+typedef struct _tg_thr_data {
+    int32_t tid;
+    StationProcStatetbl_t*  state;
+    int32_t state_num;
+    t_ifaceHandle* dutHandle;
 } tgThrData_t;
 
-extern int wfaTGConfig(int len, BYTE *buf, int *respLen, BYTE *respBuf);
-extern int wfaSendLongFile(int fromSockfd, int streamId, BYTE *respBuf, int *respLen);
-extern int wfaRecvFile(int mySockfi, int profId, char *buf);
-extern int wfaTGRecvStart(int len, BYTE *parms, int *respLen, BYTE *respBuf);
-extern int wfaTGRecvStop(int len, BYTE *parms, int *respLen, BYTE *respBuf);
-extern int wfaTGSendStart(int len, BYTE *parms, int *respLen, BYTE *respBuf);
-extern int wfaTGReset(int len, BYTE *parms, int *respLen, BYTE *respBuf);
-extern int wfaSendShortFile(int fromSockfd, int profId, BYTE *buf, int size, BYTE *respBuf, int *respLen);
-extern int wfaFlushSockQueue(int profId);
-extern int wfaTGSendPing(int len, BYTE *caCmdBuf, int *respLen, BYTE *respBuf);
-extern int wfaTGStopPing(int len, BYTE *caCmdBuf, int *respLen, BYTE *respBuf);
+int wfaTGConfig ( int len, char* buf, int* respLen, char* respBuf );
+int wfaSendLongFile ( int fromSockfd, int streamId, char* respBuf, int* respLen );
+int wfaRecvFile ( int mySockfi, int profId, char* buf );
+int wfaTGRecvStart ( int len, char* parms, int* respLen, char* respBuf );
+int wfaTGRecvStop ( int len, char* parms, int* respLen, char* respBuf );
+int wfaTGSendStart ( int len, char* parms, int* respLen, char* respBuf );
+int wfaTGReset ( int len, char* parms, int* respLen, char* respBuf );
+int wfaSendShortFile ( int fromSockfd, int profId, char* buf, int size, char* respBuf, int* respLen );
+int wfaFlushSockQueue ( int profId );
+int wfaTGSendPing ( int len, char* caCmdBuf, int* respLen, char* respBuf );
+int wfaTGStopPing ( int len, char* caCmdBuf, int* respLen, char* respBuf );
 
-extern int wfaSendBitrateData(int mySockfd, int streamId, BYTE *pRespBuf, int *aRespLen);
-tgStream_t *findStreamProfile(int streamId);
-tgProfile_t *findTGProfile(int streamId);
-int convertDscpToTos(int dscp); // return >=0 as TOS, otherwise error.
+int wfaSendBitrateData ( int mySockfd, int streamId, char* pRespBuf, int* aRespLen );
+tgStream_t* findStreamProfile ( int streamId );
+tgProfile_t* findTGProfile ( int streamId );
+int convertDscpToTos ( int dscp ); // return >=0 as TOS, otherwise error.
+
+void printProfile ( tgProfile_t* pf );
 
 #endif

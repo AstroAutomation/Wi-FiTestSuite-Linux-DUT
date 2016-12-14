@@ -20,17 +20,6 @@
  * File: wfa_miscs.c - misc functions for agents.
  */
 
-#if 0
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <arpa/inet.h>
-#include <sys/socket.h>
-#include <unistd.h>
-#include <linux/if.h>
-#include <sys/ioctl.h>
-#endif
-
 #include "wfa_portall.h"
 #include "wfa_stdincs.h"
 #include "wfa_debug.h"
@@ -38,79 +27,83 @@
 #include "wfa_types.h"
 #include "wfa_tg.h"
 
-extern tgStream_t *theStreams;
-
-tgStream_t *findStreamProfile(int id);
+tgStream_t* findStreamProfile(int id);
 /*
  * printProfile(): a debugging function to display a profile info based on
  *                 a streamId
  */
 
-void printProfile(tgProfile_t *pf)
+void printProfile(tgProfile_t* pf)
 {
     printf("profile type %i direction %i Dest ipAddr %s Dest port %i So ipAddr %s So port %i rate %i duration %i pksize %i\n", pf->profile, pf->direction, pf->dipaddr, pf->dport, pf->sipaddr, pf->sport, pf->rate, pf->duration, pf->pksize);
 }
 
-int isString(char *str)
+int isString(char* str)
 {
-    if(*str == '\0')
+    if(*str == '\0') {
         return WFA_FAILURE;
+    }
 
-    if((str[0] >= 'a' && str[0] <= 'z')
-            || (str[0] > 'A' && str[0] < 'Z'))
+    if((str[0] >= 'a' && str[0] <= 'z') || (str[0] > 'A' && str[0] < 'Z')) {
         return WFA_SUCCESS;
-    else
+    }
+    else {
         return WFA_FAILURE;
+    }
 
 }
 
-int isNumber(char *str)
+int isNumber(char* str)
 {
-    if(*str == '\0')
+    if(*str == '\0') {
         return WFA_FAILURE;
+    }
 
-    if (str[0] >= '0' && str[0] <= '9')
+    if(str[0] >= '0' && str[0] <= '9') {
         return WFA_SUCCESS;
-    else
+    }
+    else {
         return WFA_FAILURE;
+    }
 }
 
-int isIpV4Addr(char *str)
+int isIpV4Addr(char* str)
 {
     int dots = 0;
-    char *tmpstr = str;
+    char* tmpstr = str;
 
-    if(*str == '\0')
+    if(*str == '\0') {
         return WFA_FAILURE;
+    }
 
-    while(*tmpstr != '\0')
-    {
-        if(*tmpstr == '.')
-        {
+    while(*tmpstr != '\0') {
+        if(*tmpstr == '.') {
             dots++;
         }
 
         tmpstr++;
     }
 
-    if(dots <3)
+    if(dots < 3) {
         return WFA_FAILURE;
-    else
+    }
+    else {
         return WFA_SUCCESS;
+    }
 }
 
-inline double wfa_timeval2double(struct timeval *tval)
+inline double wfa_timeval2double(struct timeval* tval)
 {
-    return ((double) tval->tv_sec + (double) tval->tv_usec*1e-6);
+    return ((double) tval->tv_sec + (double) tval->tv_usec * 1e-6);
 }
 
-inline void wfa_double2timeval(struct timeval *tval, double dval)
+inline void wfa_double2timeval(struct timeval* tval, double dval)
 {
     tval->tv_sec = (long int) dval;
-    tval->tv_usec = (long int) ((dval - tval->tv_sec) * 1000000);
+    tval->tv_usec = (long int)((dval - tval->tv_sec) * 1000000);
 }
 
-inline double wfa_ftime_diff(struct timeval *t1, struct timeval *t2)
+inline double wfa_ftime_diff(struct timeval* t1, struct timeval* t2)
 {
     double dtime;
 
@@ -118,36 +111,34 @@ inline double wfa_ftime_diff(struct timeval *t1, struct timeval *t2)
     return dtime ;
 }
 
-int wfa_itime_diff(struct timeval *t1, struct timeval *t2)
+int wfa_itime_diff(struct timeval* t1, struct timeval* t2)
 {
     int dtime;
     int sec = t2->tv_sec - t1->tv_sec;
     int usec = t2->tv_usec - t1->tv_usec;
 
-     if  (sec < 0)
-     {
-         //DPRINT_INFO(WFA_OUT, "wfa_itime_diff, time field ERR sec=%d \n", sec);
-         return 0;
-     }
-     else if ( (sec == 0))
-     {
-         
-         if ( usec >= 0)
-             return usec;
-         else
-         {
-             //DPRINT_INFO(WFA_OUT, "wfa_itime_diff, time field ERR sec=%d usec=%i\n", sec, usec);
-             return 0;
-         }
+    if(sec < 0) {
+        //DPRINT_INFO(WFA_OUT, "wfa_itime_diff, time field ERR sec=%d \n", sec);
+        return 0;
+    }
+    else if((sec == 0)) {
 
-     }
-     if(usec < 0)
-     {
-         sec -=1;
-         usec += 1000000;
-     }
+        if(usec >= 0) {
+            return usec;
+        }
+        else {
+            //DPRINT_INFO(WFA_OUT, "wfa_itime_diff, time field ERR sec=%d usec=%i\n", sec, usec);
+            return 0;
+        }
 
-    dtime = sec*1000000 + usec;
+    }
+
+    if(usec < 0) {
+        sec -= 1;
+        usec += 1000000;
+    }
+
+    dtime = sec * 1000000 + usec;
     return dtime;
 }
 
@@ -155,9 +146,9 @@ int wfa_itime_diff(struct timeval *t1, struct timeval *t2)
  * THe following two functions are converting Little Endian to Big Endian.
  * If your machine is already a Big Endian, you may flag it out.
  */
-inline void int2BuffBigEndian(int val, char *buf)
+inline void int2BuffBigEndian(int32_t val, char* buf)
 {
-    char *littleEn = (char *)&val;
+    char* littleEn = (char*) &val;
 
     buf[0] = littleEn[3];
     buf[1] = littleEn[2];
@@ -165,10 +156,10 @@ inline void int2BuffBigEndian(int val, char *buf)
     buf[3] = littleEn[0];
 }
 
-int bigEndianBuff2Int(char *buff)
+int32_t bigEndianBuff2Int(char* buff)
 {
-    int val;
-    char *strval = (char *)&val;
+    int32_t val;
+    char* strval = (char*) &val;
 
     strval[0] = buff[3];
     strval[1] = buff[2];
@@ -181,22 +172,23 @@ int bigEndianBuff2Int(char *buff)
 int wfa_estimate_timer_latency()
 {
     struct timeval t1, t2, tp2;
-    int sleep=20000; /* 20 miniseconds */
-    int latency =0;
+    int sleep = 20000; /* 20 miniseconds */
+    int latency = 0;
 
     gettimeofday(&t1, NULL);
-    wUSLEEP(sleep);
+    usleep(sleep);
 
-    wGETTIMEOFDAY(&t2, NULL);
+    gettimeofday(&t2, NULL);
 
     tp2.tv_usec = t1.tv_usec + 20000;
-    if( tp2.tv_usec >= 1000000)
-    {
-        tp2.tv_sec = t1.tv_sec +1;
+
+    if(tp2.tv_usec >= 1000000) {
+        tp2.tv_sec = t1.tv_sec + 1;
         tp2.tv_usec -= 1000000;
     }
-    else
+    else {
         tp2.tv_sec = t1.tv_sec;
+    }
 
     return latency = (t2.tv_sec - tp2.tv_sec) * 1000000 + (t2.tv_usec - tp2.tv_usec);
 }

@@ -15,7 +15,7 @@
 * USE OR PERFORMANCE OF THIS SOFTWARE.
 *
 *****************************************************************************/
- 
+
 
 #ifndef _WFA_SERIAL_H
 #define _WFA_SERIAL_H
@@ -32,10 +32,10 @@
 
 #include "wfa_nw_al.h"
 
-extern int wfaOpenSerial(t_ifaceHandle *handle, char *device, int baudRate);
-extern int wfaCloseSerial(t_ifaceHandle *handle);
-extern int wfaSerialSend(t_ifaceHandle *handle, char *buffer, int bufferLen);
-extern int wfaSerialRecv(t_ifaceHandle *handle, char *buffer, int bufferLen, int *recevLen);
+int wfaOpenSerial(t_ifaceHandle *handle, char *device, int baudRate);
+int wfaCloseSerial(t_ifaceHandle *handle);
+int wfaSerialSend(t_ifaceHandle *handle, uint8_t *buffer, int bufferLen);
+int wfaSerialRecv(t_ifaceHandle *handle, uint8_t *buffer, int bufferLen, int *recevLen);
 
 #endif /* _WFA_SERIAL_H */
 

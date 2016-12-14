@@ -19,10 +19,13 @@
 
 #ifndef WFA_DEBUG_H
 #define WFA_DEBUG_H
+#include <syslog.h>
 
 #define WFA_ERR         stderr  /* error: can be redefined to a log file */
 #define WFA_OUT         stdout  /* info:  can be redefined to a log file */
 #define WFA_WNG         stdout  /* warning: can be redefined to a log file */
+
+extern unsigned short wfa_defined_debug;
 
 #define WFA_DEBUG_DEFAULT          0x0001
 #define WFA_DEBUG_ERR              0x0001
@@ -31,14 +34,19 @@
 
 #define WFA_DEBUG 1
 
-#define DPRINT_ERR      fprintf(WFA_ERR, "File %s, Line %ld: ", \
-                               __FILE__, (long)__LINE__); \
-                        fprintf
+#define DPRINT_ERR(outdevice, ...)      fprintf(WFA_ERR, "File %s, Line %ld: ", __FILE__, (long)__LINE__); \
+                                        syslog(LOG_INFO,__VA_ARGS__); \
+                                        fprintf(outdevice, __VA_ARGS__)
 
-#define DPRINT_INFO     if(wfa_defined_debug & WFA_DEBUG_INFO) \
-                            fprintf
+#define DPRINT_INFO(outdevice, ...)     if(wfa_defined_debug & WFA_DEBUG_INFO) { \
+                                            syslog(LOG_INFO, __VA_ARGS__); \
+                                            fprintf(outdevice, __VA_ARGS__); \
+                                        } \
+                                        (void)0
 
-#define DPRINT_WARNING  if(wfa_defined_debug & WFA_DEBUG_WARNING) \
-                            fprintf
-
+#define DPRINT_WARNING(outdevice, ...)  if(wfa_defined_debug & WFA_DEBUG_WARNING) { \
+                                            syslog(LOG_INFO, __VA_ARGS__); \
+                                            fprintf(outdevice, __VA_ARGS__); \
+                                        } \
+                                        (void)0
 #endif

@@ -36,11 +36,15 @@
 #define INTEGER_2 0x0002            /* word */
 #define OCTET_STRING 0x0003         /* string */
 
+#define WFA_TLV_SEPARATOR   0xAAAA
+
 typedef struct _wfatlvHdr
 {
-    WORD tag;   /* tag/type */
-    WORD len;   /* value length */
-} wfaTLV;
+    uint16_t separator;
+    uint16_t unused;
+    uint16_t tag;   /* tag/type */
+    uint16_t len;   /* value length */
+} __attribute__((packed)) wfaTLV;
 
 #define WFA_TLV_HDR_LEN sizeof(wfaTLV)
 
@@ -147,12 +151,13 @@ enum cmd_tags
 	WFA_STA_MANAGE_SERVICE_TLV, /* 82 */
 	WFA_STA_GET_EVENTS_TLV, /* 83 */
 	WFA_STA_GET_EVENT_DETAILS_TLV, /* 84 */
-	
+
    WFA_STA_SET_EAPAKAPRIME_TLV,           /* 80 */
    WFA_STA_SET_EAPPWD_TLV,                /* 81 */
    WFA_STA_COMMANDS_END,                  /* 82 */
-  
+
    WFA_STA_EXEC_ACTION_TLV,			/* 86 */
+   WFA_STA_SCAN_TLV, /* 87 */
 };
 
 
@@ -249,9 +254,9 @@ enum resp_tags
 	WFA_STA_GENERATE_EVENT_RESP_TLV,			/* 77 */
 	WFA_STA_REINVOKE_WFD_SESSION_RESP_TLV,		/* 78 */
 	WFA_STA_GET_PARAMETER_RESP_TLV,		/* 79 */
-	
+
 	WFA_STA_NFC_ACTION_RESP_TLV,		/* 80 */
-	
+
 	WFA_STA_INVOKE_CMD_RESP_TLV,		/* 81 */
 	WFA_STA_MANAGE_SERVICE_RESP_TLV,		/* 82 */
 	WFA_STA_GET_EVENTS_RESP_TLV,		/* 83 */
@@ -260,20 +265,21 @@ enum resp_tags
     WFA_STA_SET_EAPPWD_RESP_TLV,                   /* 81 */
     WFA_STA_RESPONSE_END,                        /* 82 */
 	WFA_STA_EXEC_ACTION_RESP_TLV,					/* 86 */
+	WFA_STA_SCAN_RESP_TLV, 					/* 87 */
 };
 
 #define WFA_TLV_HEAD_LEN 1+2
 
-extern WORD wfaGetTag(BYTE *tlv_data);
-extern void wfaSetTag(BYTE *tlv_data, BYTE new_tag);
-extern WORD wfaGetTLVLen(BYTE *tlv_data);
-extern WORD wfaGetValueLen(BYTE *tlv_data);
-extern BOOL wfaGetValue(BYTE *pstr, int value_len, BYTE *tlv_data);
-extern BOOL wfaIsValidTag(BYTE the_tag);
-extern void wfaAliasByTag(BYTE the_tag, char *aliasStr);
-extern BOOL wfaDecodeTLV(BYTE *tlv_data, int tlv_len, WORD *ptlv_tag, int *ptlv_val_len, BYTE *ptlv_value);
-extern BOOL wfaEncodeTLV(WORD the_tag, WORD the_len, BYTE *the_value, BYTE *tlv_data);
+uint16_t wfaGetTag(char *tlv_data);
+void wfaSetTag(char *tlv_data, char new_tag);
+uint16_t wfaGetTLVLen(char *tlv_data);
+uint16_t wfaGetValueLen(char *tlv_data);
+bool wfaGetValue(char *pstr, int value_len, char *tlv_data);
+bool wfaIsValidTag(char the_tag);
+void wfaAliasByTag(char the_tag, char *aliasStr);
+bool wfaDecodeTLV(char *tlv_data, int tlv_len, uint16_t *ptlv_tag, int *ptlv_val_len, char *ptlv_value);
+bool wfaEncodeTLV(uint16_t the_tag, uint16_t the_len, char *the_value, char *tlv_data);
 
-extern WORD wfaGetValueType(BYTE the_tag, BYTE *tlv_data);
+uint16_t wfaGetValueType(char the_tag, char *tlv_data);
 
 #endif

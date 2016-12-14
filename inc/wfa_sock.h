@@ -22,16 +22,12 @@
 
 #include <stdio.h>		/* for printf() and fprintf() */
 
-#ifdef _WINDOWS
-#include <winsock.h>    /* for socket(), bind(), and connect() */
-#else
 #include <sys/socket.h> /* for socket(), bind(), and connect() */
 #include <arpa/inet.h>  /* for sockaddr_in and inet_ntoa() */
 #include <stdlib.h>		/* for atoi() and exit() */
 #include <string.h>		/* for memset() */
 #include <unistd.h>		/* for close() */
 #include <sys/time.h>   /* for struct timeval {} */
-#endif
 #include <stdlib.h>		/* for atoi() and exit() */
 #include <string.h>		/* for memset() */
 #include <fcntl.h>		/* for fcntl() */
@@ -49,27 +45,24 @@ struct sockfds
     int *psfd;       /* wmm-ps socket id         */
 };
 
-extern int wfaCreateTCPServSock(char *devIface, unsigned short port);
+int wfaCreateTCPServSock(char *devIface, unsigned short port);
 
-extern int wfaCreateUDPSock(char *sipaddr, unsigned short sport);
-extern int wfaAcceptTCPConn(int servSock);
+int wfaCreateUDPSock(char *ipaddr, unsigned short port);
+int wfaAcceptTCPConn(int servSock);
 
-extern int wfaConnectUDPPeer(int sock, char *dipaddr, int dport);
-extern int wfaConnectTCPPeer(int mysock, char *daddr, int dport);
+int wfaConnectUDPPeer(int sockfd, char *dipaddr, int dport);
+int wfaConnectTCPPeer(int sockfd, char *daddr, int dport);
 
-extern void wfaSetSockFiDesc(fd_set *sockset, int *, struct sockfds *);
-#ifdef _WINDOWS
-extern int wfaCtrlSend(SOCKET sock, unsigned char *buf, int bufLen);
-#else
-extern int wfaCtrlSend(int sock, unsigned char *buf, int bufLen);
-#endif
-extern int wfaCtrlRecv(int sock, unsigned char *buf);
-extern int wfaTrafficSendTo(int sock, char *buf, int bufLen, struct sockaddr *to);
-extern int wfaTrafficRecv(int sock, char *buf, struct sockaddr *from);
-extern int wfaGetifAddr(char *ifname, struct sockaddr_in *sa);
-extern struct timeval *wfaSetTimer(int, int, struct timeval *);
-extern int wfaSetSockMcastRecvOpt(int, char*);
-extern int wfaSetSockMcastSendOpt(int);
-extern int wfaSetProcPriority(int);
+void wfaSetSockFiDesc(fd_set *sockset, int *, struct sockfds *);
+
+int wfaCtrlSend(int sockfd, char *buf, int bufLen);
+int wfaCtrlRecv(int sockfd, char *buf, size_t* buflen);
+int wfaTrafficSendTo(int sockfd, char *buf, int bufLen, struct sockaddr *to);
+int wfaTrafficRecv(int sockfd, char *buf, struct sockaddr *from);
+int wfaGetifAddr(char *ifname, struct sockaddr_in *sa);
+struct timeval *wfaSetTimer(int, int, struct timeval *);
+int wfaSetSockMcastRecvOpt(int, char*);
+int wfaSetSockMcastSendOpt(int);
+int wfaSetProcPriority(int);
 
 #endif /* _WFA_SOCK_H */

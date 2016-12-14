@@ -1,35 +1,35 @@
 #
-# Copyright (c) 2015 Wi-Fi Alliance
-# 
-# Permission to use, copy, modify, and/or distribute this software for any 
-# purpose with or without fee is hereby granted, provided that the above 
+# Copyright (c) 2016 Wi-Fi Alliance
+#
+# Permission to use, copy, modify, and/or distribute this software for any
+# purpose with or without fee is hereby granted, provided that the above
 # copyright notice and this permission notice appear in all copies.
-# 
-# THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES 
-# WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF 
-# MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY 
-# SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER 
+#
+# THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+# WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+# MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
+# SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER
 # RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT,
 # NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE
 # USE OR PERFORMANCE OF THIS SOFTWARE.
 #
-CC = gcc
+CC?=gcc
 LIB=lib
 DUT=dut
 CA=ca
 UCC=ucc
-MAKE=make
+MAKE?=make
 
 #=============== Config ===============================
 # Set the config flag below as required
-# to enable WMM PS 
+# to enable WMM PS
 $WMM-PS = 0
-# to enable WMM-AC set the below flag along with WMM-PS 
+# to enable WMM-AC set the below flag along with WMM-PS
 $WMM-AC = 0
 #=============== compilation flag ======================
-INCFLAG = -I../inc
-CFLAGS = -g -O2 -D_REENTRANT -Wall
-# This is for WMM-PS 
+INCFLAG := -I../inc
+CFLAGS := -g -O2 -D_REENTRANT -Wall
+# This is for WMM-PS
 #for Ext TG
 #CFLAGS = -DWFA_WMM_PS_EXT
 ifeq ($WMM-PS, 1)
@@ -39,11 +39,12 @@ CFLAGS += -DWFA_WMM_AC
 echo test
 endif
 endif
+
 # This is for WMM-PS
 #for Ext TG
 #CFLAGS = -DWFA_WMM_PS_EXT -Wall -I../inc
 
-## for WMM-AC, WMM-PS, Voice, PMF, TDLS Test-Bed 
+## for WMM-AC, WMM-PS, Voice, PMF, TDLS Test-Bed
 #CFLAGS = -DWFA_WMM_PS_EXT -DWFA_WMM_AC -DWFA_VOICE_EXT -DWFA_STA_TB -Wall -I../inc
 
 ## for WMM-AC, WMM-PS Test-Bed
@@ -59,7 +60,7 @@ endif
 #CFLAGS = -DWFA_WMM_PS_EXT -DWFA_WMM_AC -DWFA_PC_CONSOLE -DWFA_STA_TB -Wall -I../inc
 
 # This is for WPA2 as default
-CFLAGS = -g -O2 -D_REENTRANT -Wall -I../inc
+CFLAGS = -g -O2 -D_REENTRANT -DWFA_STA_TB -DWFA_VOICE_EXT -DWFA_WMM_PS_EXT -DWFA_WMM_AC -DWFA_11N_SUPPORT_ONLY -Wall -I../inc
 
 DUTLIBS = ../lib/libwfa_dut.a -lpthread
 CALIBS = ../lib/libwfa_ca.a -lpthread
@@ -75,4 +76,4 @@ LIB_OBJS_DUT = wfa_sock.o wfa_serial.o wfa_nw_al.o  wfa_tlv.o wfa_cs.o wfa_cmdtb
 
 LIB_OBJS_CA = wfa_sock.o wfa_serial.o wfa_nw_al.o  wfa_tlv.o wfa_ca_resp.o wfa_cmdproc.o wfa_miscs.o wfa_typestr.o
 
-CLEANFILES = core core.* *.core.* *.o *.a
+CLEANFILES = core core.* *.core.* *.o *.a wfa_ca wfa_dut

@@ -19,15 +19,16 @@
 
 #ifndef _WFA_MISCS_H_
 #define _WFA_MISCS_H_
+#include <time.h>
 
-extern int isString(char *);
-extern int isNumber(char *);
-extern int isIpV4Addr(char *);
-extern inline double wfa_timeval2double(struct timeval *tval);
-extern inline void wfa_double2timeval(struct timeval *tval, double dval);
-extern inline double wfa_ftime_diff(struct timeval *t1, struct timeval *t2);
-extern int wfa_itime_diff(struct timeval *t1, struct timeval *t2);
-extern inline void int2BuffBigEndian(int val, char *buf);
-extern inline int bigEndianBuff2Int(char *buff);
+int isString(char *);
+int isNumber(char *);
+int isIpV4Addr(char *);
+inline double wfa_timeval2double(struct timeval *tval);
+inline void wfa_double2timeval(struct timeval *tval, double dval);
+inline double wfa_ftime_diff(struct timeval *t1, struct timeval *t2);
+int wfa_itime_diff(struct timeval *t1, struct timeval *t2);
+inline void int2BuffBigEndian(uint32_t val, char *buf);
+inline uint32_t bigEndianBuff2Int(char *buff);
 
 #endif

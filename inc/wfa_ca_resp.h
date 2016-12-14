@@ -18,94 +18,103 @@
 
 #ifndef WFA_CA_RESP_H
 #define WFA_CA_RESP_H
+#include <inttypes.h>
+#include <wfa_rsp.h>
+#include <wfa_cmds.h>
 
-typedef int (*dutCommandRespFuncPtr)(BYTE *cmdBuf);
+typedef int (*dutCommandRespFuncPtr)(char *cmdBuf);
 
-int caCmdNotDefinedYet(BYTE *cmdBuf);
-int wfaStaVerifyIpConnectResp(BYTE *cmdBuf);
-int wfaStaSetIpConfigResp(BYTE *cmdBuf);
-int wfaStaIsConnectedResp(BYTE *cmdBuf);
-int wfaStaGetIpConfigResp(BYTE *cmdBuf);
-int wfaGetVersionResp(BYTE *cmdBuf);
-int wfaStaGetInfoResp(BYTE *cmdBuf);
-int wfaTrafficAgentConfigResp(BYTE *cmdBuf);
-int wfaTrafficAgentSendResp(BYTE *cmdBuf);
-int wfaTrafficAgentRecvStartResp(BYTE *cmdBuf);
-int wfaTrafficAgentRecvStopResp(BYTE *cmdBuf);
-int wfaTrafficAgentResetResp(BYTE *cmdBuf);
-int wfaTrafficAgentPingStartResp(BYTE *cmdBuf);
-int wfaTrafficAgentPingStopResp(BYTE *cmdBuf);
-int wfaStaGetMacAddressResp(BYTE *cmdBuf);
-int wfaStaGetBSSIDResp(BYTE *cmdBuf);
-int wfaStaSetEncryptionResp(BYTE *cmdBuf);
-int wfaStaSetEapTLSResp(BYTE *cmdBuf);
-int wfaStaSetPSKResp(BYTE *cmdBuf);
-int wfaStaSetEapTTLSResp(BYTE *cmdBuf);
-int wfaStaSetEapSIMResp(BYTE *cmdBuf);
-int wfaStaSetEapPEAPResp(BYTE *cmdBuf);
-int wfaStaAssociateResp(BYTE *cmdBuf);
-int wfaStaSetIBSSResp(BYTE *cmdBuf);
-int wfaStaGetStatsResp(BYTE *cmdBuf);
-int wfaDeviceGetInfoResp(BYTE *cmdBuf);
-int wfaDeviceListIFResp(BYTE *cmdBuf);
-int wfaStaDebugSetResp(BYTE *cmdBuf);
-void wfaStaDebugHexDump(BYTE *cmdBuf);
-int wfaStaSetModeResp(BYTE *cmdBuf);
-int wfaStaUploadResp(BYTE *cmdBuf);
-int wfaStaSetUAPSDResp(BYTE *cmdBuf);
-int wfaStaSetModeResp(BYTE *cmdBuf);
-int wfaStaSetWMMResp(BYTE *cmdBuf);
-int wfaStaPresetParametersResp(BYTE *cmdBuf);
-int wfaStaSetEapFASTResp(BYTE *cmdBuf);
-int wfaStaSetEapAKAResp(BYTE * cmdBuf);
-int wfaStaSetSystimeResp(BYTE * cmdBuf);
+int caCmdNotDefinedYet(char *cmdBuf);
+int wfaStaVerifyIpConnectResp(char *cmdBuf);
+int wfaStaSetIpConfigResp(char *cmdBuf);
+int wfaStaIsConnectedResp(char *cmdBuf);
+int wfaStaGetIpConfigResp(char *cmdBuf);
+int wfaGetVersionResp(char *cmdBuf);
+int wfaStaGetInfoResp(char *cmdBuf);
+int wfaTrafficAgentConfigResp(char *cmdBuf);
+int wfaTrafficAgentSendResp(char *cmdBuf);
+int wfaTrafficAgentRecvStartResp(char *cmdBuf);
+int wfaTrafficAgentRecvStopResp(char *cmdBuf);
+int wfaTrafficAgentResetResp(char *cmdBuf);
+int wfaTrafficAgentPingStartResp(char *cmdBuf);
+int wfaTrafficAgentPingStopResp(char *cmdBuf);
+int wfaStaGetMacAddressResp(char *cmdBuf);
+int wfaStaGetBSSIDResp(char *cmdBuf);
+int wfaStaSetEncryptionResp(char *cmdBuf);
+int wfaStaSetEapTLSResp(char *cmdBuf);
+int wfaStaSetPSKResp(char *cmdBuf);
+int wfaStaSetEapTTLSResp(char *cmdBuf);
+int wfaStaSetEapSIMResp(char *cmdBuf);
+int wfaStaSetEapPEAPResp(char *cmdBuf);
+int wfaStaSetSecurityResp(char *cmdBuf);
+int wfaStaAssociateResp(char *cmdBuf);
+int wfaStaScanResp(char *cmdBuf);
+int wfaStaSetIBSSResp(char *cmdBuf);
+int wfaStaGetStatsResp(char *cmdBuf);
+int wfaDeviceGetInfoResp(char *cmdBuf);
+int wfaDeviceListIFResp(char *cmdBuf);
+int wfaStaDevSendFrameResp(char *cmdBuf);
+int wfaStaDebugSetResp(char *cmdBuf);
+void wfaStaDebugHexDump(char *cmdBuf);
+int wfaStaSetModeResp(char *cmdBuf);
+int wfaStaUploadResp(char *cmdBuf);
+int wfaStaSetUAPSDResp(char *cmdBuf);
+int wfaStaSetModeResp(char *cmdBuf);
+int wfaStaSetWMMResp(char *cmdBuf);
+int wfaStaPresetParametersResp(char *cmdBuf);
+int wfaStaSetEapFASTResp(char *cmdBuf);
+int wfaStaSetEapAKAResp(char * cmdBuf);
+int wfaStaSetSystimeResp(char * cmdBuf);
 
-int wfaStaSet11nResp(BYTE * cmdBuf);
-int wfaStaSetWirelessResp(BYTE * cmdBuf);
-int wfaStaSendADDBAResp(BYTE * cmdBuf);
-int wfaStaCoexMgmtResp(BYTE * cmdBuf);
-int wfaStaRifsTestResp(BYTE * cmdBuf);
-int wfaStaResetDefaultResp(BYTE * cmdBuf);
-int wfaStaDisconnectResp(BYTE * cmdBuf);
+int wfaStaSet11nResp(char * cmdBuf);
+int wfaStaSetWirelessResp(char * cmdBuf);
+int wfaStaSendADDBAResp(char * cmdBuf);
+int wfaStaCoexMgmtResp(char * cmdBuf);
+int wfaStaRifsTestResp(char * cmdBuf);
+int wfaStaResetDefaultResp(char * cmdBuf);
+int wfaStaDisconnectResp(char * cmdBuf);
 
-int wfaStandardReturn(BYTE *cmdBuf);
+int wfaStandardReturn(char *cmdBuf);
 
-int wfaStaGenericResp(BYTE *cmdBuf);
+int wfaStaGenericResp(char *cmdBuf);
 /* P2P */
-int 	wfaStaGetP2pDevAddressResp(BYTE *cmdBuf);
-int 	wfaStaSetP2pResp(BYTE *cmdBuf);
-int 	wfaStaP2pConnectResp(BYTE *cmdBuf);
-int 	wfaStaStartAutoGO(BYTE *cmdBuf);
-int 	wfaStaP2pStartGrpFormResp(BYTE *cmdBuf);
-int 	wfaStaP2pDissolveResp(BYTE *cmdBuf);
-int 	wfaStaSendP2pInvReqResp(BYTE *cmdBuf);
-int 	wfaStaAcceptP2pInvReqResp(BYTE *cmdBuf);
-int 	wfaStaSendP2pProvDisReqResp(BYTE *cmdBuf);
-int 	wfaStaSetWpsPbcResp(BYTE *cmdBuf);
-int 	wfaStaWpsReadPinResp(BYTE *cmdBuf);
-int 	wfaStaWpsEnterPinResp(BYTE *cmdBuf);
-int 	wfaStaGetPskResp(BYTE *cmdBuf);
-int 	wfaStaP2pResetResp(BYTE *cmdBuf);
-int 	wfaStaWpsReadLabelResp(BYTE *cmdBuf);
-int 	wfaStaGetP2pIpConfigResp(BYTE *cmdBuf);
-int 	wfaStaSendServiceDiscoveryReqResp(BYTE *cmdBuf);
-int 	wfaStaSendP2pPresenceReqResp(BYTE *cmdBuf);
-int 	wfaStaSetSleepReqResp(BYTE *cmdBuf);
-int 	wfaStaSetOpportunisticPsReqResp(BYTE *cmdBuf);
-int     wfaStaAddArpTableEntryResp(BYTE * cmdBuf);
-int     wfaStaBlockICMPResponseResp(BYTE * cmdBuf);
+int wfaStaGetP2pDevAddressResp(char *cmdBuf);
+int wfaStaSetP2pResp(char *cmdBuf);
+int wfaStaP2pConnectResp(char *cmdBuf);
+int wfaStaStartAutoGO(char *cmdBuf);
+int wfaStaP2pStartGrpFormResp(char *cmdBuf);
+int wfaStaP2pDissolveResp(char *cmdBuf);
+int wfaStaSendP2pInvReqResp(char *cmdBuf);
+int wfaStaAcceptP2pInvReqResp(char *cmdBuf);
+int wfaStaSendP2pProvDisReqResp(char *cmdBuf);
+int wfaStaSetWpsPbcResp(char *cmdBuf);
+int wfaStaWpsReadPinResp(char *cmdBuf);
+int wfaStaWpsEnterPinResp(char *cmdBuf);
+int wfaStaGetPskResp(char *cmdBuf);
+int wfaStaP2pResetResp(char *cmdBuf);
+int wfaStaWpsReadLabelResp(char *cmdBuf);
+int wfaStaGetP2pIpConfigResp(char *cmdBuf);
+int wfaStaSendServiceDiscoveryReqResp(char *cmdBuf);
+int wfaStaSendP2pPresenceReqResp(char *cmdBuf);
+int wfaStaSetSleepReqResp(char *cmdBuf);
+int wfaStaSetOpportunisticPsReqResp(char *cmdBuf);
+int wfaStaAddArpTableEntryResp(char * cmdBuf);
+int wfaStaBlockICMPResponseResp(char * cmdBuf);
 /* P2P */
-int     wfaStaStartWfdConnectionResp(BYTE * cmdBuf);
-int		wfaStaCliCmdResp(BYTE * cmdBuf);
-int		wfaStaConnectGoStartWfdResp(BYTE * cmdBuf);
-int		wfaStaGenericResp(BYTE * cmdBuf);
-int     wfaStaGetParameterResp(BYTE * cmdBuf);
-int     wfaStaNfcActionResp(BYTE * cmdBuf);
-int     wfaStaInvokeCommandResp(BYTE * cmdBuf);
-int     wfaStaManageServiceResp(BYTE * cmdBuf);
-int     wfaStaGetEventsResp(BYTE * cmdBuf);
-int     wfaStaGetEventDataResp(BYTE * cmdBuf);
-int 	wfaStaExecActionResp(BYTE *cmdBuf);
+int wfaStaStartWfdConnectionResp(char * cmdBuf);
+int wfaStaCliCmdResp(char * cmdBuf);
+int wfaStaConnectGoStartWfdResp(char * cmdBuf);
+int wfaStaGenericResp(char * cmdBuf);
+int wfaStaGetParameterResp(char * cmdBuf);
+int wfaStaNfcActionResp(char * cmdBuf);
+int wfaStaInvokeCommandResp(char * cmdBuf);
+int wfaStaManageServiceResp(char * cmdBuf);
+int wfaStaGetEventsResp(char * cmdBuf);
+int wfaStaGetEventDataResp(char * cmdBuf);
+int wfaStaExecActionResp(char *cmdBuf);
 
+/* traffic generator */
+void wfaSendPing(tgPingStart_t *staPing, float *interval, int streamid);
+int wfaStopPing(dutCmdResponse_t *stpResp, int streamid);
 
 #endif

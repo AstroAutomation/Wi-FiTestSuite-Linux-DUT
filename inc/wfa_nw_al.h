@@ -15,7 +15,7 @@
 * USE OR PERFORMANCE OF THIS SOFTWARE.
 *
 *****************************************************************************/
- 
+
 
 #ifndef _WFA_NW_AL_H
 #define _WFA_NW_AL_H
@@ -36,7 +36,8 @@
 #define CONN_TYPE_NONE                       0
 #define CONN_TYPE_SERIAL                     1
 #define CONN_TYPE_TCP                        2
-#define CONN_TYPE_UDP                        3  
+#define CONN_TYPE_UDP                        3
+#define CONN_TYPE_STDIN                      4
 
 #define CONNECTION_SERVER   1
 #define CONNECTION_CLIENT   0
@@ -79,13 +80,13 @@ typedef struct ifaceHandle{
 
 
 
-extern int wfaOpenInterFace(t_ifaceHandle *handle, char * ifaceName, int typeOfConn, int servFlag );
-extern int wfaInterFacePeerInfoSet(t_ifaceHandle *handle, char *destIpAddr, int dstPort, int dstBuad, int typeOfConn );
-extern int wfaInterFacePeerConn(t_ifaceHandle *handle );
-extern int wfaInterFacePeerConnClose(t_ifaceHandle *handle );
+int wfaOpenInterFace(t_ifaceHandle *handle, char * ifaceName, int typeOfConn, int servFlag );
+int wfaInterFacePeerInfoSet(t_ifaceHandle *handle, char *destIpAddr, int dstPort, int dstBuad, int typeOfConn );
+int wfaInterFacePeerConn(t_ifaceHandle *handle );
+int wfaInterFacePeerConnClose(t_ifaceHandle *handle );
 
-extern int wfaInterFaceClose(t_ifaceHandle *handle );
-extern int wfaInterFaceDataSend(t_ifaceHandle *handle, char *buffer, int bufferLen );
-extern int wfaInterFaceDataRecv(t_ifaceHandle *handle, char *buffer, int bufferLen, int *recvLen );
+int wfaInterFaceClose(t_ifaceHandle *handle );
+int wfaInterFaceDataSend(t_ifaceHandle *handle, char *buffer, int bufferLen );
+int wfaInterFaceDataRecv(t_ifaceHandle *handle, char *buffer, int bufferLen, int *recvLen );
 
 #endif /* _WFA_NW_AL_H */

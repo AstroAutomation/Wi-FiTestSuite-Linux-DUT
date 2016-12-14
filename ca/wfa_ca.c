@@ -46,17 +46,9 @@
 
 #define WFA_ENV_AGENT_IPADDR "WFA_ENV_AGENT_IPADDR"
 
-extern int xcCmdProcGetVersion(unsigned char *parms);
 extern dutCommandRespFuncPtr wfaCmdRespProcFuncTbl[];
 extern typeNameStr_t nameStr[];
 extern char gRespStr[];
-
-int gSock = -1;
-int tmsockfd = -1;
-int gCaSockfd = -1;
-int xcSockfd = -1;
-int btSockfd;
-
 
 int gtgSend, gtgRecv, gtgTransac;
 
@@ -66,7 +58,7 @@ char gCaNetIf[32] = "any";
 
 char logPath[100] = "";
 
-tgStream_t    *theStreams;
+tgStream_t*    theStreams;
 long          itimeout = 0;
 
 unsigned short wfa_defined_debug = WFA_DEBUG_ERR | WFA_DEBUG_WARNING | WFA_DEBUG_INFO;
@@ -76,19 +68,19 @@ unsigned short dfd_lvl = WFA_DEBUG_DEFAULT | WFA_DEBUG_ERR | WFA_DEBUG_INFO;
  * the output format can be redefined for file output.
  */
 
-void help_usage(char *str)
+void help_usage(char* str)
 {
-    printf( "Usage:  %s -i <eth iface> -I <interface> -P <local port> -T <type> [Options: ] \n", str);
-    printf( "  Options:                                                                \n"
-            "     -i   --iface       ethernet interface for control agent              \n"
-            "     -I   --dutif       interface either ethernet or serial device name   \n"
-            "     -T   --type        type interface like serial(1) TCP(2) UDP(3)       \n"
-            "     -P   --port        local sever port address to start server          \n"
-            "     -d   --dutip       dut ip address in case of TCP/UDP                 \n"
-            "     -r   --dutport     dut port address in case of TCP                   \n"
-            "     -b   --baud        baud rate in case of serial                       \n"
-            "     -g   --log         log file path for debug                           \n"
-            "     -h   --help        display usage                                     \n");
+    printf("Usage:  %s -i <eth iface> -I <interface> -P <local port> -T <type> [Options: ] \n", str);
+    printf("  Options:                                                                \n"
+           "     -i   --iface       ethernet interface for control agent              \n"
+           "     -I   --dutif       interface either ethernet or serial device name   \n"
+           "     -T   --type        type interface like serial(1) TCP(2) UDP(3)       \n"
+           "     -P   --port        local sever port address to start server          \n"
+           "     -d   --dutip       dut ip address in case of TCP/UDP                 \n"
+           "     -r   --dutport     dut port address in case of TCP                   \n"
+           "     -b   --baud        baud rate in case of serial                       \n"
+           "     -g   --log         log file path for debug                           \n"
+           "     -h   --help        display usage                                     \n");
 }
 
 
@@ -104,390 +96,340 @@ static const struct option longIPOptions[] = {
     { "help",       no_argument, NULL, 'h' },
     { NULL,         no_argument, NULL, 0 }
 };
-static const char *optionString = "i:I:T:d:P:r:b:g:h";
+static const char* optionString = "i:I:T:d:P:r:b:g:h";
 
 
-int main(int argc, char *argv[])
+int main(int argc, char* argv[])
 {
     t_ifaceHandle  ctrlRecvHandle;
     t_ifaceHandle  dutHandle;
-    int typeOfConn=0;
+    int typeOfConn = 0;
     int opt;
     int optionIndex = 0;
-#if 0 
-    // these variable used for or TG 
-    int nfds; 
-    struct sockaddr_in servAddr; 
-    char *servIP=NULL;
-    fd_set sockSet;
-    int slen;
-#endif
     /* remote port for sending command over tcp */
-    unsigned short remoteServPort = 0; 
+    unsigned short remoteServPort = 0;
     unsigned short locPortNo = 0;
     int baudrate = 0;
     int retStatus = 0;
-    
+
     /*char *tstr=NULL;*/
     char dutSrvIP[WFA_IP_ADDR_STR_LEN];
-#if DEBUG 
-    int bytesRcvd;                   
+#if DEBUG
+    int bytesRcvd;
 #endif
 
     char cmdName[WFA_BUFF_32];
     int i, isFound = 0, nbytes, ret_status;
-    WORD tag;
-    int tmsockfd, cmdLen = WFA_BUFF_1K;
+    uint16_t tag;
+    int cmdLen = WFA_BUFF_1K;
     /* int maxfdn1; */
-    BYTE xcCmdBuf[WFA_BUFF_4K];
-    BYTE caCmdBuf[WFA_BUFF_4K];
-    BYTE pcmdBuf[WFA_BUFF_1K];
-    char *pcmdStr = NULL;
+    char xcCmdBuf[WFA_BUFF_4K];
+    char caCmdBuf[WFA_BUFF_4K];
+    char pcmdBuf[WFA_BUFF_1K];
+    char* pcmdStr = NULL;
     char respStr[WFA_BUFF_512];
 
+    openlog("wfa_ca", LOG_CONS | LOG_NDELAY, 0);
 
-    char *tempCmdBuff;
+    while((opt = getopt_long(argc, argv, optionString, longIPOptions, &optionIndex)) != -1) {
+        switch(opt) {
+            case 'i':
+                printf("option -i with value %s\n", optarg);
+                strncpy(gCaNetIf, optarg, 31);
+                break;
 
-    while ((opt = getopt_long(argc, argv, optionString, longIPOptions, &optionIndex)) != -1) 
-    {
-        switch (opt) {
-        case 'i':
-            printf ("option -i with value %s\n", optarg);
-            strncpy(gCaNetIf, optarg, 31);
-            break;
-        case 'I':
-            printf ("option -I with value %s\n", optarg);
-            strncpy(gnetIf, optarg, 31);
-            break;
-        case 'T':
-            /* interface type */
-            /* none: 0, serial: 1, tcp: 2, udp: 3 */
-            typeOfConn = atoi(optarg);
-            break;
-        case 'P':
-            /* local server port*/
-            locPortNo = atoi(optarg);
-            break;
-        case 'b':
-            /* baudrate for serial operation*/
-            baudrate = atoi(optarg);
-            break;
-        case 'd':
-            if(isIpV4Addr(optarg)== WFA_ERROR) {
-                printf("invalid ip address %s\n",optarg);
+            case 'I':
+                printf("option -I with value %s\n", optarg);
+                strncpy(gnetIf, optarg, 31);
+                break;
+
+            case 'T':
+                /* interface type */
+                /* none: 0, serial: 1, tcp: 2, udp: 3 */
+                typeOfConn = atoi(optarg);
+                break;
+
+            case 'P':
+                /* local server port*/
+                locPortNo = atoi(optarg);
+                break;
+
+            case 'b':
+                /* baudrate for serial operation*/
+                baudrate = atoi(optarg);
+                break;
+
+            case 'd':
+                if(isIpV4Addr(optarg) == WFA_ERROR) {
+                    printf("invalid ip address %s\n", optarg);
+                    help_usage(argv[0]);
+                    exit(1);
+                }
+
+                strncpy(dutSrvIP, optarg, WFA_IP_ADDR_STR_LEN);
+                break;
+
+            case 'r':
+                /* dut server port  use in case dut use TCP/UDP*/
+                remoteServPort = atoi(optarg);
+                break;
+
+            case 'g':
+                /* log path for debug */
+                printf("option -I with value %s\n", optarg);
+                strncpy(logPath, optarg, sizeof(logPath) - 1);
+                break;
+
+            case 'h':
                 help_usage(argv[0]);
                 exit(1);
-            }
-            strncpy(dutSrvIP, optarg, WFA_IP_ADDR_STR_LEN);
-            break;
-        case 'r':
-            /* dut server port  use in case dut use TCP/UDP*/
-            remoteServPort = atoi(optarg);
-            break;
-        case 'g':
-            /* log path for debug */
-            printf ("option -I with value %s\n", optarg);
-            strncpy(logPath, optarg, sizeof(logPath)-1);
-            break;
-        case 'h':
-            help_usage(argv[0]);
-            exit(1);
-            break;
-        case ':':
-            printf ("option  --%s must have value \n", longIPOptions[optionIndex].name);
-            break;
-        case '?':
-        /* getopt_long() set a variable, just keep going */
-        break;
+                break;
+
+            case ':':
+                printf("option  --%s must have value \n", longIPOptions[optionIndex].name);
+                break;
+
+            case '?':
+                /* getopt_long() set a variable, just keep going */
+                break;
         }
     }
 
-
-    if (locPortNo == 0) {
-        printf ("wrong local port for server to start %d\n",locPortNo);
+    if(locPortNo == 0) {
+        printf("Requires local port for server to start %d\n", locPortNo);
         help_usage(argv[0]);
         exit(1);
     }
 
-    if ((CONN_TYPE_SERIAL == typeOfConn)) {
-        if ( baudrate == 0) {
-            printf ("wrong baud rate \n");
+    strcpy(ctrlRecvHandle.if_attr.ipConn.device, gCaNetIf);
+    ctrlRecvHandle.if_attr.ipConn.port = locPortNo;
+    ctrlRecvHandle.if_attr.ipConn.sockfd = -1;
+    ctrlRecvHandle.if_attr.ipConn.clientSockfd = -1;
+
+
+    if((CONN_TYPE_SERIAL == typeOfConn)) {
+        if(baudrate == 0) {
+            printf("Invalid serial baud rate \n");
             exit(1);
         }
+
+        dutHandle.if_attr.serial.fd = -1;
+        dutHandle.if_attr.serial.baudrate = baudrate;
+        strcpy(dutHandle.if_attr.serial.device, gnetIf);
     }
-    else if (CONN_TYPE_TCP == typeOfConn || CONN_TYPE_UDP == typeOfConn) {
-        if ( remoteServPort == 0) {
-            printf ("wrong remote port for IP connection\n");
+    else if(CONN_TYPE_TCP == typeOfConn || CONN_TYPE_UDP == typeOfConn) {
+        if(remoteServPort == 0) {
+            printf("Invalid remote port for IP connection\n");
             exit(1);
         }
+
+        dutHandle.if_attr.ipConn.sockfd = -1;
+        dutHandle.if_attr.ipConn.srvFlag = 0;
+        dutHandle.if_attr.ipConn.port = remoteServPort;
+        strcpy(dutHandle.if_attr.ipConn.srcIpaddr, dutSrvIP);
     }
     else {
-        printf ("type (-T) should be with correct value %d\n", typeOfConn);
+        printf("type (-T) should be with correct value %d\n", typeOfConn);
         help_usage(argv[0]);
         exit(1);
     }
 
     /* check need in case logpath allocated as require*/
     if(logPath != NULL && strlen(logPath)) {
-        FILE *logfile;
+        FILE* logfile;
         int fd;
-        logfile = fopen(logPath,"a");
+        logfile = fopen(logPath, "a");
+
         if(logfile != NULL) {
             fd = fileno(logfile);
-            DPRINT_INFO(WFA_OUT,"redirecting the output to %s\n", logPath);
-            dup2(fd,1);
-            dup2(fd,2);
+            DPRINT_INFO(WFA_OUT, "redirecting the output to %s\n", logPath);
+            dup2(fd, 1);
+            dup2(fd, 2);
         }
         else {
             DPRINT_ERR(WFA_ERR, "Cant open the log file continuing without redirecting\n");
         }
     }
 
-    ctrlRecvHandle.if_attr.ipConn.port = locPortNo;
-    retStatus = wfaOpenInterFace(&ctrlRecvHandle, gCaNetIf, CONN_TYPE_TCP, CONNECTION_SERVER);
-    if(retStatus) {
-        printf("CA server faild to start \n");
-        exit(1);
-    }
-    /* must be removed*/
-    dutHandle.if_attr.ipConn.sockfd = -1;
-
-//    maxfdn1 = tmsockfd + 1;
-//    FD_ZERO(&sockSet);
-#if 0
-    if(gSock == -1)
-    {
-        if ((gSock = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0)
-        {
-            DPRINT_ERR(WFA_ERR, "socket() failed: %i", errno);
-            exit(1);
-        }
-
-        memset(&servAddr, 0, sizeof(servAddr)); 
-        servAddr.sin_family      = AF_INET;
-        servAddr.sin_addr.s_addr = inet_addr(servIP);
-        servAddr.sin_port        = htons(servPort);
-
-        if (connect(gSock, (struct sockaddr *) &servAddr, sizeof(servAddr)) < 0)
-        {
-            DPRINT_ERR(WFA_ERR, "connect() failed: %i", errno);
-            exit(1);
-        }
-    }
-#endif
-
-
     /*infinite loop */
-    for(;;)
-    {
-#if 0        
-        FD_ZERO(&sockSet);
-        FD_SET(tmsockfd, &sockSet);
-        maxfdn1 = tmsockfd + 1;
+    for(;;) {
+        if(ctrlRecvHandle.if_attr.ipConn.sockfd == -1) {
+            printf("CA server starting \n");
+            retStatus = wfaOpenInterFace(&ctrlRecvHandle, gCaNetIf, CONN_TYPE_TCP, CONNECTION_SERVER);
 
-        if(gCaSockfd != -1)
-        {
-            FD_SET(gCaSockfd, &sockSet);
-            if(maxfdn1 < gCaSockfd)
-                maxfdn1 = gCaSockfd +1; 
-        }
-
-        if(gSock != -1)
-        {
-            FD_SET(gSock, &sockSet);
-            if(maxfdn1 < gSock)
-                maxfdn1 = gSock +1; 
-        }
-
-        if((nfds = select(maxfdn1, &sockSet, NULL, NULL, NULL)) < 0)
-        {
-            if(errno == EINTR)
+            if(retStatus) {
+                printf("CA server failed to start \n");
+                sleep(5);
                 continue;
-            else
-                DPRINT_WARNING(WFA_WNG, "select error %i", errno);
+            }
         }
- #endif
-        DPRINT_INFO(WFA_OUT, "new event \n");
 
-        wfaInterFacePeerConn( &ctrlRecvHandle);
-        printf("client got connected\n");
+        wfaInterFacePeerConn(&ctrlRecvHandle);
 
         memset(xcCmdBuf, 0, WFA_BUFF_4K);
         memset(gRespStr, 0, WFA_BUFF_512);
-#if 0
 
-        nbytes = wfaCtrlRecv(gCaSockfd, xcCmdBuf); 
-        if(nbytes <=0)
+        if(ctrlRecvHandle.if_attr.ipConn.clientSockfd < 0)
+            // no client connection
         {
-            shutdown(gCaSockfd, SHUT_WR);
-            close(gCaSockfd);
-            gCaSockfd = -1;
             continue;
         }
-#endif
 
         retStatus = wfaInterFaceDataRecv(&ctrlRecvHandle, xcCmdBuf, WFA_BUFF_1K, &nbytes);
-        printf("retStatus %d nbytes %d {%s}",retStatus, nbytes, xcCmdBuf);
-        if(nbytes <=0)
-        {
-            printf("Ctrl data receive error nbytes = %d \n",nbytes);
+
+        if(nbytes < 0) {
+            printf("Error: %s. Restarting connection.\n", strerror(errno));
             /* may not be correct idea unless recev wait till it gets some data*/
             wfaInterFacePeerConnClose(&ctrlRecvHandle);
             continue;
         }
+        else if(nbytes == 0) {
+            continue;
+        }
 
-        /*
-         * send back to command line or TM.
-         */
-        //sleep(1); /* having this is for slowing down unexpected output result on CLI command sometimes */
+        // clear the crlf at the end of the message
+        if(xcCmdBuf[nbytes - 1] == '\n' && xcCmdBuf[nbytes - 2] == '\r') {
+            xcCmdBuf[nbytes - 1] = 0;
+            xcCmdBuf[nbytes - 2] = 0;
+            nbytes -= 2;
+        }
+
+        // strip off trailing spaces because for some reason it causes a problem
+        while(xcCmdBuf[nbytes - 1] == '\t' || xcCmdBuf[nbytes - 1] == ' ') {
+            xcCmdBuf[nbytes - 1] = '\0';
+            nbytes--;
+        }
+
+        if(nbytes == 0 || strlen(xcCmdBuf) == 0) {
+            continue;
+        }
+
+        printf("Received command from testbed: {%s}\n", xcCmdBuf);
+
+        /* send back to command line or TM.*/
         memset(respStr, 0, WFA_BUFF_128);
         sprintf(respStr, "status,RUNNING\r\n");
-        retStatus = wfaInterFaceDataSend(&ctrlRecvHandle ,respStr, strlen(respStr));
-        if(retStatus == -1)
-            continue;
+        retStatus = wfaInterFaceDataSend(&ctrlRecvHandle, respStr, strlen(respStr));
 
-#if 0
-/*      wfaCtrlSend(gCaSockfd, (BYTE *)respStr, strlen(respStr));  */
-        DPRINT_INFO(WFA_OUT, "%s\n", respStr);
-        DPRINT_INFO(WFA_OUT, "message %s %i\n", xcCmdBuf, nbytes);
-        slen = (int )strlen((char *)xcCmdBuf);
-
-        DPRINT_INFO(WFA_OUT, "last %x last-1  %x last-2 %x last-3 %x\n", 
-                        cmdName[slen], cmdName[slen-1], cmdName[slen-2], cmdName[slen-3]);
-        xcCmdBuf[slen-3] = '\0';
-#endif
-
-        if(CONN_TYPE_TCP ==typeOfConn )
-        {
+        if(CONN_TYPE_TCP == typeOfConn) {
             wfaOpenInterFace(&dutHandle, gnetIf, CONN_TYPE_TCP, CONNECTION_CLIENT);
-            wfaInterFacePeerInfoSet( &dutHandle, dutSrvIP, remoteServPort, 0, typeOfConn);
+            wfaInterFacePeerInfoSet(&dutHandle, dutSrvIP, remoteServPort, 0, typeOfConn);
             retStatus = wfaInterFacePeerConn(&dutHandle);
-            if( WFA_ERROR == retStatus ) {
-                printf("Dut Connection failed\n");
-                retStatus = wfaInterFaceDataSend(&ctrlRecvHandle ,"status,ERROR\r\n",
-                    strlen("status,ERROR\r\n"));
+
+            if(WFA_ERROR == retStatus) {
+                printf("Dut Connection failed {status,ERROR}\n");
+                retStatus = wfaInterFaceDataSend(&ctrlRecvHandle, "status,ERROR\r\n", strlen("status,ERROR\r\n"));
                 wfaInterFaceClose(&dutHandle);
                 continue;
             }
         }
-        else if(CONN_TYPE_SERIAL==typeOfConn )
-        {
+        else if(CONN_TYPE_SERIAL == typeOfConn) {
             dutHandle.if_attr.serial.baudrate = baudrate;
             wfaOpenInterFace(&dutHandle, gnetIf, CONN_TYPE_SERIAL, CONNECTION_CLIENT);
-            wfaInterFacePeerInfoSet( &dutHandle, dutSrvIP, remoteServPort, 115200, typeOfConn);
+            wfaInterFacePeerInfoSet(&dutHandle, dutSrvIP, remoteServPort, 115200, typeOfConn);
         }
-        isFound = 0;
-        tempCmdBuff = (char* )malloc(sizeof(xcCmdBuf));
-        memcpy(tempCmdBuff, xcCmdBuf, sizeof(xcCmdBuf));
 
-        memcpy(cmdName, strtok_r((char *)tempCmdBuff, ",", (char **)&pcmdStr), 32);
-        printf("\nInside the CLI huck block \n");
-#if 0
-        wfaCliFd=fopen("/etc/WfaEndpoint/wfa_cli.txt","r");
-        printf("\nAfter File open \n");
-        if(wfaCliFd!= NULL)
-        {
-            //printf("\nInside File open \n");
-            while(fgets(wfaCliBuff, 128, wfaCliFd) != NULL)
-            {
-                //printf("Line read from CLI file : %s",wfaCliBuff);
-                if(ferror(wfaCliFd))
-                    break;
-                cliCmd=strtok(wfaCliBuff,"-");
-                if(strcmp(cliCmd,cmdName) == 0)
-                {
-                    strcpy(cmdName,"wfa_cli_cmd");
-                    pcmdStr = (char *)&xcCmdBuf[0];
-                    break;
-                }
-            }
-            fclose(wfaCliFd);
-        }
-#endif
-        printf("\nOutside the new block \n");
-        free(tempCmdBuff);
-        if(strcmp(cmdName,"wfa_cli_cmd") != 0)
-        memcpy(cmdName, strtok_r((char *)xcCmdBuf, ",", (char **)&pcmdStr), 32);
-        
+        isFound = 0;
+        memcpy(cmdName, strtok_r((char*) xcCmdBuf, ",", (char**) &pcmdStr), sizeof(cmdName));
+
         i = 0;
-        while(nameStr[i].type != -1)
-        {
-            if(strcmp(nameStr[i].name, cmdName) == 0)
-            {
+
+        while(nameStr[i].type != -1) {
+            if(strstr(cmdName, nameStr[i].name) != NULL) {
                 isFound = 1;
                 break;
             }
+
             i++;
         }
 
-        DPRINT_INFO(WFA_OUT, "%s\n", cmdName);
-
-        if(isFound == 0)
-        {
+        if(isFound == 0) {
             sleep(1);
-            sprintf(respStr, "status,INVALID\r\n");
-            retStatus = wfaInterFaceDataSend(&ctrlRecvHandle ,(char *)respStr, strlen(respStr));
-            DPRINT_WARNING(WFA_WNG, "Command not valid, check the name\n");
+            sprintf(respStr, "status,INVALID,no_such_command\r\n");
+            printf("Command failed {%s}\n", respStr);
+            retStatus = wfaInterFaceDataSend(&ctrlRecvHandle, respStr, strlen(respStr));
             continue;
         }
 
-        memset(pcmdBuf, 0, WFA_BUFF_1K); 
-        if(nameStr[i].cmdProcFunc(pcmdStr, pcmdBuf, &cmdLen)==WFA_FAILURE)
-        {
-            sleep(1);
-            sprintf(respStr, "status,INVALID\r\n");
-            retStatus = wfaInterFaceDataSend(&ctrlRecvHandle ,(char *)respStr, strlen(respStr));
-            DPRINT_WARNING(WFA_WNG, "Incorrect command syntax\n");
+        memset(pcmdBuf, 0, WFA_BUFF_1K);
+
+        if(nameStr[i].cmdProcFunc(pcmdStr, pcmdBuf, &cmdLen) != WFA_SUCCESS) {
+            sprintf(respStr, "status,INVALID,incorrect_syntax\r\n");
+            printf("Command failed {%s}\n", respStr);
+            retStatus = wfaInterFaceDataSend(&ctrlRecvHandle, respStr, strlen(respStr));
             continue;
         }
-        /*
-         * send to DUT.
-         */
-        DPRINT_INFO(WFA_OUT, "sent to DUT\n");
-        retStatus = wfaInterFaceDataSend(&dutHandle, (char *)pcmdBuf, cmdLen);
-        if(retStatus == -1)
-        {
-            DPRINT_WARNING(WFA_WNG, "Incorrect sending ...\n");
+
+        /* send to DUT.*/
+#ifdef DEBUG
+        DPRINT_INFO(WFA_OUT, "send to DUT\n");
+
+        for(i = 0; i < cmdLen; i++) {
+            printf("%02x ", pcmdBuf[i]);
+        }
+
+        printf("\n");
+#endif
+
+        retStatus = wfaInterFaceDataSend(&dutHandle, pcmdBuf, cmdLen);
+
+        if(retStatus == -1) {
+            sprintf(respStr, "status,INVALID,send_failed\r\n");
+            printf("Command failed {%s}\n", respStr);
+            retStatus = wfaInterFaceDataSend(&ctrlRecvHandle, respStr, strlen(respStr));
             wfaInterFaceClose(&dutHandle);
             continue;
         }
-        //sleep(1);
 
-        DPRINT_INFO(WFA_OUT, "received from DUT\n");
         memset(respStr, 0, WFA_BUFF_128);
         memset(caCmdBuf, 0, WFA_BUFF_4K);
-        retStatus = wfaInterFaceDataRecv(&dutHandle,(char *) caCmdBuf, WFA_BUFF_4K, &nbytes);
-        if (retStatus < 0)
-        {
-            DPRINT_WARNING(WFA_WNG, "recv() failed or connection closed prematurely");
+        nbytes = 0;
+        retStatus = wfaInterFaceDataRecv(&dutHandle, caCmdBuf, WFA_BUFF_4K, &nbytes);
+
+
+
+        if(retStatus != WFA_SUCCESS || nbytes <= 0) {
+            sprintf(respStr, "status,INVALID,response_timeout\r\n");
+            printf("Command failed {%s}\n", respStr);
+            retStatus = wfaInterFaceDataSend(&ctrlRecvHandle, respStr, strlen(respStr));
             wfaInterFaceClose(&dutHandle);
             continue;
         }
+        else {
+#ifdef DEBUG
+            DPRINT_INFO(WFA_OUT, "read from DUT\n");
 
-#if DEBUG 
-        for(i = 0; i< bytesRcvd; i++)
-            printf("%x ", caCmdBuf[i]);
-            printf("\n");
+            for(i = 0; i < nbytes; i++) {
+                DPRINT_INFO(WFA_OUT, "%02x ", (caCmdBuf[i] & 0xff));
+            }
+
+            DPRINT_INFO(WFA_OUT, "\n");
 #endif
-        tag = ((wfaTLV *)caCmdBuf)->tag;
-        memcpy(&ret_status, caCmdBuf+4, 4);
+            wfaTLV* tlvHdr = (wfaTLV*) caCmdBuf;
+            tag = tlvHdr->tag;
+            memcpy(&ret_status, caCmdBuf + WFA_TLV_HDR_LEN, 4);
 
-        DPRINT_INFO(WFA_OUT, "tag %i \n", tag);
-        if(tag != 0 && wfaCmdRespProcFuncTbl[tag] != NULL)
-        {
-            wfaCmdRespProcFuncTbl[tag](caCmdBuf);
-            /*send back to ctrl agent*/
-            retStatus = wfaInterFaceDataSend(&ctrlRecvHandle ,
-                    (char *)gRespStr, strlen(gRespStr));
+            if(tag != 0 && wfaCmdRespProcFuncTbl[tag] != NULL) {
+                wfaCmdRespProcFuncTbl[tag](caCmdBuf);
+                printf("Command response to testbed {%s}\n", gRespStr);
+                /*send back to ctrl agent*/
+                retStatus = wfaInterFaceDataSend(&ctrlRecvHandle, gRespStr, strlen(gRespStr));
+            }
+            else {
+                DPRINT_WARNING(WFA_WNG, "function not defined\n");
+                sprintf(respStr, "status,INVALID\r\n");
+                retStatus = wfaInterFaceDataSend(&ctrlRecvHandle, respStr, strlen(respStr));
+            }
         }
-        else
-        {
-        DPRINT_WARNING(WFA_WNG, "function not defined\n");
-        }
+
         /* close the dut connection */
         wfaInterFaceClose(&dutHandle);
-        wfaInterFacePeerConnClose(&ctrlRecvHandle);
     } /* for */
+
+    wfaInterFacePeerConnClose(&ctrlRecvHandle);
     wfaInterFaceClose(&ctrlRecvHandle);
+
+    closelog();
+
     return 0;
 }

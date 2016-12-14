@@ -1,6 +1,6 @@
 /****************************************************************************
 *
-* Copyright (c) 2015 Wi-Fi Alliance
+* Copyright (c) 2016 Wi-Fi Alliance
 *
 * Permission to use, copy, modify, and/or distribute this software for any
 * purpose with or without fee is hereby granted, provided that the above
@@ -40,17 +40,10 @@
 #include "wfa_agt.h"
 #include "wfa_rsp.h"
 
-/* extern defined variables */
-extern int gxcSockfd, btSockfd;
-
-int NotDefinedYet(int len, unsigned char *params, int *respLen, BYTE *respBuf);
-extern int agtCmdProcGetVersion(int len, BYTE *parms, int *respLen, BYTE *respBuf);
-
-extern unsigned short wfa_defined_debug;
+int NotDefinedYet(int len, char* params, int* respLen, char* respBuf);
 
 /* globally define the function table */
-xcCommandFuncPtr gWfaCmdFuncTbl[WFA_STA_COMMANDS_END] =
-{
+xcCommandFuncPtr gWfaCmdFuncTbl[WFA_STA_COMMANDS_END] = {
     /* Traffic Agent Commands */
     NotDefinedYet,            /*    None                               (0) */
     agtCmdProcGetVersion,     /*    WFA_GET_VERSION_TLV                (1) */
@@ -97,21 +90,21 @@ xcCommandFuncPtr gWfaCmdFuncTbl[WFA_STA_COMMANDS_END] =
     wfaStaTestBedCmd,         /*    WFA_STA_SEND_NEIGREQ               (36)*/
     wfaStaTestBedCmd,         /*    WFA_STA_PRESET_PARAMETERS          (37)*/
 #endif
-    wfaStaSetEapFAST,	      /*    WFA_STA_SET_EAPFAST_TLV	       (38)*/
-    wfaStaSetEapAKA,	      /*    WFA_STA_SET_EAPAKA_TLV             (49)*/
-    wfaStaSetSystime,	      /*    WFA_STA_SET_SYSTIME_TLV	       (40)*/
+    wfaStaSetEapFAST,         /*    WFA_STA_SET_EAPFAST_TLV        (38)*/
+    wfaStaSetEapAKA,          /*    WFA_STA_SET_EAPAKA_TLV             (49)*/
+    wfaStaSetSystime,         /*    WFA_STA_SET_SYSTIME_TLV        (40)*/
 #ifdef WFA_STA_TB
-    wfaStaSet11n,  	      /*    WFA_STA_SET_11n_TLV	    	       (41)*/
-    wfaStaSetWireless,	      /*    WFA_STA_SET_WIRELESS_TLV	       (42)*/
-    wfaStaSendADDBA,	      /*    WFA_STA_SEND_ADDBA_TLV	       (43)*/
+    wfaStaSet11n,         /*    WFA_STA_SET_11n_TLV                (41)*/
+    wfaStaSetWireless,        /*    WFA_STA_SET_WIRELESS_TLV           (42)*/
+    wfaStaSendADDBA,          /*    WFA_STA_SEND_ADDBA_TLV         (43)*/
     wfaStaSendCoExistMGMT,    /*    WFA_STA_SET_COEXIST_MGMT_TLV       (44)*/
     wfaStaSetRIFS,            /*    WFA_STA_SET_RIFS_TEST_TLV          (45)*/
     wfaStaResetDefault,       /*    WFA_STA_RESET_DEFAULT_TLV          (46)*/
     wfaStaDisconnect,         /*    WFA_STA_DISCONNECT_TLV             (47)*/
 #else
-    wfaStaTestBedCmd,  	      /*    WFA_STA_SET_11n_TLV	    	       (41)*/
-    wfaStaTestBedCmd,	      /*    WFA_STA_SET_WIRELESS_TLV	       (42)*/
-    wfaStaTestBedCmd,	      /*    WFA_STA_SEND_ADDBA_TLV	       (43)*/
+    wfaStaTestBedCmd,         /*    WFA_STA_SET_11n_TLV                (41)*/
+    wfaStaTestBedCmd,         /*    WFA_STA_SET_WIRELESS_TLV           (42)*/
+    wfaStaTestBedCmd,         /*    WFA_STA_SEND_ADDBA_TLV         (43)*/
     wfaStaTestBedCmd,         /*    WFA_STA_SET_COEXIST_MGMT_TLV       (44)*/
     wfaStaTestBedCmd,         /*    WFA_STA_SET_RIFS_TEST_TLV          (45)*/
     wfaStaTestBedCmd,         /*    WFA_STA_RESET_DEFAULT_TLV          (46)*/
@@ -120,19 +113,19 @@ xcCommandFuncPtr gWfaCmdFuncTbl[WFA_STA_COMMANDS_END] =
     wfaStaDevSendFrame,          /*    WFA_STA_DEV_SEND_FRAME_TLV              (48)*/
     wfaStaSetSecurity,        /*    WFA_STA_SET_SECURITY_TLV           (49)*/
     wfaStaGetP2pDevAddress,   /*    WFA_STA_GET_P2P_DEV_ADDRESS_TLV    (50)*/
-    wfaStaSetP2p,	      /*    WFA_STA_SET_P2P_TLV	               (51)*/
+    wfaStaSetP2p,         /*    WFA_STA_SET_P2P_TLV                (51)*/
     wfaStaP2pConnect,         /*    WFA_STA_P2P_CONNECT_TLV            (52)*/
-    wfaStaStartAutoGo, 	      /* WFA_STA_START_AUTO_GO                 (53)*/
+    wfaStaStartAutoGo,        /* WFA_STA_START_AUTO_GO                 (53)*/
     wfaStaP2pStartGrpFormation, /*    WFA_STA_P2P_START_GRP_FORMATION_TLV      (54)*/
 
     wfaStaP2pDissolve,          /*    WFA_STA_P2P_DISSOLVE_TLV                 (55)*/
     wfaStaSendP2pInvReq,        /*    WFA_STA_SEND_P2P_INV_REQ_TLV             (56)*/
-    wfaStaAcceptP2pInvReq,	/*    WFA_STA_ACCEPT_P2P_INV_REQ_TLV           (57)*/
+    wfaStaAcceptP2pInvReq,  /*    WFA_STA_ACCEPT_P2P_INV_REQ_TLV           (57)*/
     wfaStaSendP2pProvDisReq,    /*    WFA_STA_SEND_P2P_PROV_DIS_REQ_TLV    (58)*/
     wfaStaSetWpsPbc,            /*    WFA_STA_SET_WPS_PBC_TLV              (59)*/
 
     wfaStaWpsReadPin,           /*    WFA_STA_WPS_READ_PIN_TLV             (60)*/
-    wfaStaWpsEnterPin,          /*    WFA_STA_WPS_ENTER_PIN_TLV	           (61)*/
+    wfaStaWpsEnterPin,          /*    WFA_STA_WPS_ENTER_PIN_TLV            (61)*/
     wfaStaGetPsk,               /*    WFA_STA_GET_PSK_TLV                  (62)*/
     wfaStaP2pReset,             /*    WFA_STA_P2P_RESET_TLV                (63)*/
     wfaStaWpsReadLabel,         /*    WFA_STA_WPS_READ_LABEL_TLV           (64)*/
@@ -147,25 +140,25 @@ xcCommandFuncPtr gWfaCmdFuncTbl[WFA_STA_COMMANDS_END] =
     wfaStaSetRadio,           /*    WFA_STA_SET_RADIO_TLV              (72)*/
     wfaStaSetRFeature,        /*    WFA_STA_RFEATURE_TLV               (73)*/
 
-	wfaStaStartWfdConnection,   /*    WFA_STA_START_WFD_CONNECTION_TLV               (74)*/
-	wfaStaCliCommand,         /*   WFA_STA_CLI_CMD_TLV            (75)*/
-	wfaStaConnectGoStartWfd,   /*    WFA_STA_CONNECT_GO_START_WFD_TLV               (76)*/
-	wfaStaGenerateEvent,         /*   WFA_STA_GENERATE_EVENT_TLV            (77)*/
-	wfaStaReinvokeWfdSession,         /*   WFA_STA_REINVOKE_WFD_SESSION_TLV            (78)*/
-	wfaStaGetParameter,         /*   WFA_STA_GET_PARAMETER_TLV            (79)*/
-	wfaStaNfcAction,         /*   WFA_STA_NFC_ACTION_TLV            (80)*/
-	wfaStaInvokeCommand,         /*   WFA_STA_INVOKE_COMMAND_TLV            (81)*/
-	wfaStaManageService,         /*   WFA_STA_MANAGE_SERVICE_TLV            (82)*/	
-	wfaStaGetEvents,         /*   WFA_STA_GET_EVENTS_TLV            (83)*/
-	wfaStaGetEventDetails,         /*   WFA_STA_GET_EVENT_DETAILS_TLV            (84)*/	
-	wfaStaExecAction,         /*   WFA_STA_EXEC_ACTION_TLV            (85)*/	
+    wfaStaStartWfdConnection,   /*    WFA_STA_START_WFD_CONNECTION_TLV               (74)*/
+    wfaStaCliCommand,         /*   WFA_STA_CLI_CMD_TLV            (75)*/
+    wfaStaConnectGoStartWfd,   /*    WFA_STA_CONNECT_GO_START_WFD_TLV               (76)*/
+    wfaStaGenerateEvent,         /*   WFA_STA_GENERATE_EVENT_TLV            (77)*/
+    wfaStaReinvokeWfdSession,         /*   WFA_STA_REINVOKE_WFD_SESSION_TLV            (78)*/
+    wfaStaGetParameter,         /*   WFA_STA_GET_PARAMETER_TLV            (79)*/
+    wfaStaNfcAction,         /*   WFA_STA_NFC_ACTION_TLV            (80)*/
+    wfaStaInvokeCommand,         /*   WFA_STA_INVOKE_COMMAND_TLV            (81)*/
+    wfaStaManageService,         /*   WFA_STA_MANAGE_SERVICE_TLV            (82)*/
+    wfaStaGetEvents,         /*   WFA_STA_GET_EVENTS_TLV            (83)*/
+    wfaStaGetEventDetails,         /*   WFA_STA_GET_EVENT_DETAILS_TLV            (84)*/
+    wfaStaExecAction,         /*   WFA_STA_EXEC_ACTION_TLV            (85)*/
 };
 
 
 /*
  * NotDefinedYet(): a dummy function
  */
-int NotDefinedYet(int len, unsigned char *params, int *respLen, BYTE *respBuf)
+int NotDefinedYet(int len, char* params, int* respLen, char* respBuf)
 {
     DPRINT_WARNING(WFA_WNG, "The command processing function not defined.\n");
 

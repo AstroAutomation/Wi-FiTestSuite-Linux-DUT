@@ -360,83 +360,88 @@ int wfaTrafficAgentSendResp(char* cmdBuf)
         return done;
     }
 
-    curResp = (dutCmdResponse_t*) statResp;
     sprintf(gRespStr, "status,COMPLETE,streamID,");
-
+    statResp = cmdBuf + WFA_TLV_HDR_LEN;
     for(i = 0; i < numStreams; i++) {
+        curResp = (dutCmdResponse_t*) statResp;
         if(i > 0) {
             strcat(gRespStr, " ");
         }
 
         sprintf(copyBuf, "%i", curResp->streamId);
         strncat(gRespStr, copyBuf, sizeof(copyBuf) - 1);
-        curResp = statResp + 8 + sizeof(tgStats_t);
+        statResp += 8 + sizeof(tgStats_t);
     }
 
     printf("streamids %s\n", gRespStr);
-    curResp = (dutCmdResponse_t*) statResp;
     strcat(gRespStr, ",txFrames,");
+    statResp = cmdBuf + WFA_TLV_HDR_LEN;
 
     for(i = 0; i < numStreams; i++) {
+        curResp = (dutCmdResponse_t*) statResp;
         if(i > 0) {
             strcat(gRespStr, " ");
         }
 
         sprintf(copyBuf, "%i", curResp->cmdru.stats.txFrames);
         strncat(gRespStr, copyBuf, sizeof(copyBuf) - 1);
-        curResp = statResp + 8 + sizeof(tgStats_t);
+        statResp += 8 + sizeof(tgStats_t);
     }
 
-    curResp = (dutCmdResponse_t*) statResp;
     strcat(gRespStr, ",rxFrames,");
 
+    statResp = cmdBuf + WFA_TLV_HDR_LEN;
     for(i = 0; i < numStreams; i++) {
+        curResp = (dutCmdResponse_t*) statResp;
         if(i > 0) {
             strcat(gRespStr, " ");
         }
 
         sprintf(copyBuf, "%i", curResp->cmdru.stats.rxFrames);
         strncat(gRespStr, copyBuf, sizeof(copyBuf) - 1);
-        curResp = statResp + 8 + sizeof(tgStats_t);
+        statResp += 8 + sizeof(tgStats_t);
     }
 
-    curResp = (dutCmdResponse_t*) statResp;
     strcat(gRespStr, ",txPayloadBytes,");
 
+    statResp = cmdBuf + WFA_TLV_HDR_LEN;
     for(i = 0; i < numStreams; i++) {
+        curResp = (dutCmdResponse_t*) statResp;
         if(i > 0) {
             strcat(gRespStr, " ");
         }
 
-        sprintf(copyBuf, "%llu", curResp->cmdru.stats.txPayloadBytes);
+        sprintf(copyBuf, "%" PRIu64, curResp->cmdru.stats.txPayloadBytes);
         strncat(gRespStr, copyBuf, sizeof(copyBuf) - 1);
-        curResp = statResp + 8 + sizeof(tgStats_t);
+        statResp += 8 + sizeof(tgStats_t);
     }
 
-    curResp = (dutCmdResponse_t*) statResp;
     strcat(gRespStr, ",rxPayloadBytes,");
 
+    statResp = cmdBuf + WFA_TLV_HDR_LEN;
     for(i = 0; i < numStreams; i++) {
+        curResp = (dutCmdResponse_t*) statResp;
         if(i > 0) {
             strcat(gRespStr, " ");
         }
 
-        sprintf(copyBuf, "%llu", curResp->cmdru.stats.rxPayloadBytes);
+        sprintf(copyBuf, "%" PRIu64, curResp->cmdru.stats.rxPayloadBytes);
         strncat(gRespStr, copyBuf, sizeof(copyBuf) - 1);
-        curResp = statResp + 8 + sizeof(tgStats_t);
+        statResp += 8 + sizeof(tgStats_t);
     }
 
-    curResp = (dutCmdResponse_t*) statResp;
     strcat(gRespStr, ",outOfSequenceFrames,");
 
+    statResp = cmdBuf + WFA_TLV_HDR_LEN;
     for(i = 0; i < numStreams; i++) {
+        curResp = (dutCmdResponse_t*) statResp;
         if(i > 0) {
             strcat(gRespStr, " ");
         }
 
         sprintf(copyBuf, "%i", curResp->cmdru.stats.outOfSequenceFrames);
         strncat(gRespStr, copyBuf, sizeof(copyBuf) - 1);
-        curResp = statResp + 8 + sizeof(tgStats_t);
+        statResp += 8 + sizeof(tgStats_t);
     }
 
     strcat(gRespStr, "\r\n");
@@ -476,10 +481,10 @@ int wfaTrafficAgentRecvStopResp(char* cmdBuf)
 
     DPRINT_INFO(WFA_OUT, "Entering wfaTrafficAgentRecvStopResp ...\n");
 
-    curResp = (dutCmdResponse_t*) dutRsp;
     sprintf(gRespStr, "status,COMPLETE,streamID,");
-
+    dutRsp = cmdBuf + WFA_TLV_HDR_LEN;
     for(i = 0; i < numStreams; i++) {
+        curResp = (dutCmdResponse_t*) dutRsp;
         if(i > 0) {
             strcat(gRespStr, " ");
         }
@@ -487,13 +492,13 @@ int wfaTrafficAgentRecvStopResp(char* cmdBuf)
         sprintf(copyBuf, "%d", curResp->streamId);
         strncat(gRespStr, copyBuf, sizeof(copyBuf) - 1);
 
-        curResp = dutRsp + 8 + sizeof(tgStats_t);
+        dutRsp += 8 + sizeof(tgStats_t);
     }
 
-    curResp = (dutCmdResponse_t*) dutRsp;
     strcat(gRespStr, ",txFrames,");
-
+    dutRsp = cmdBuf + WFA_TLV_HDR_LEN;
     for(i = 0; i < numStreams; i++) {
+        curResp = (dutCmdResponse_t*) dutRsp;
         if(i > 0) {
             strcat(gRespStr, " ");
         }
@@ -501,13 +506,13 @@ int wfaTrafficAgentRecvStopResp(char* cmdBuf)
         sprintf(copyBuf, "%u", curResp->cmdru.stats.txFrames);
         strncat(gRespStr, copyBuf, sizeof(copyBuf) - 1);
 
-        curResp = dutRsp + 8 + sizeof(tgStats_t);
+        dutRsp += 8 + sizeof(tgStats_t);
     }
 
-    curResp = (dutCmdResponse_t*) dutRsp;
     strcat(gRespStr, ",rxFrames,");
-
+    dutRsp = cmdBuf + WFA_TLV_HDR_LEN;
     for(i = 0; i < numStreams; i++) {
+        curResp = (dutCmdResponse_t*) dutRsp;
         if(i > 0) {
             strcat(gRespStr, " ");
         }
@@ -515,41 +520,41 @@ int wfaTrafficAgentRecvStopResp(char* cmdBuf)
         sprintf(copyBuf, "%u", curResp->cmdru.stats.rxFrames);
         strncat(gRespStr, copyBuf, sizeof(copyBuf) - 1);
 
-        curResp = dutRsp + 8 + sizeof(tgStats_t);
+        dutRsp += 8 + sizeof(tgStats_t);
     }
 
-    curResp = (dutCmdResponse_t*) dutRsp;
     strcat(gRespStr, ",txPayloadBytes,");
-
+    dutRsp = cmdBuf + WFA_TLV_HDR_LEN;
     for(i = 0; i < numStreams; i++) {
+        curResp = (dutCmdResponse_t*) dutRsp;
         if(i > 0) {
             strcat(gRespStr, " ");
         }
 
-        sprintf(copyBuf, "%llu", curResp->cmdru.stats.txPayloadBytes);
+        sprintf(copyBuf, "%" PRIu64, curResp->cmdru.stats.txPayloadBytes);
         strncat(gRespStr, copyBuf, sizeof(copyBuf) - 1);
 
-        curResp = dutRsp + 8 + sizeof(tgStats_t);
+        dutRsp += 8 + sizeof(tgStats_t);
     }
 
-    curResp = (dutCmdResponse_t*) dutRsp;
     strcat(gRespStr, ",rxPayloadBytes,");
-
+    dutRsp = cmdBuf + WFA_TLV_HDR_LEN;
     for(i = 0; i < numStreams; i++) {
+        curResp = (dutCmdResponse_t*) dutRsp;
         if(i > 0) {
             strcat(gRespStr, " ");
         }
 
-        sprintf(copyBuf, "%llu", curResp->cmdru.stats.rxPayloadBytes);
+        sprintf(copyBuf, "%" PRIu64, curResp->cmdru.stats.rxPayloadBytes);
         strncat(gRespStr, copyBuf, sizeof(copyBuf) - 1);
 
-        curResp = dutRsp + 8 + sizeof(tgStats_t);
+        dutRsp += 8 + sizeof(tgStats_t);
     }
 
-    curResp = (dutCmdResponse_t*) dutRsp;
     strcat(gRespStr, ",outOfSequenceFrames,");
-
+    dutRsp = cmdBuf + WFA_TLV_HDR_LEN;
     for(i = 0; i < numStreams; i++) {
+        curResp = (dutCmdResponse_t*) dutRsp;
         if(i > 0) {
             strcat(gRespStr, " ");
         }
@@ -557,13 +562,11 @@ int wfaTrafficAgentRecvStopResp(char* cmdBuf)
         sprintf(copyBuf, "%d", curResp->cmdru.stats.outOfSequenceFrames);
         strncat(gRespStr, copyBuf, sizeof(copyBuf) - 1);
 
-        curResp = dutRsp + 8 + sizeof(tgStats_t);
+        dutRsp += 8 + sizeof(tgStats_t);
     }
 
     strcat(gRespStr, "\r\n");
 
-
-    printf("gRespStr = %s", gRespStr);
     return done;
 }
 
@@ -1363,11 +1366,11 @@ int wfaStaInvokeCommandResp(char* cmdBuf)
 
 			for (i =0 ; i < invokeCmdResp->invokeCmdResp.advRsp.numServInfo; i++)
 			{
-				if (serviceList[0] == '\0') { 
-					sprintf(serviceList, "%s", invokeCmdResp->invokeCmdResp.advRsp.servAdvInfo[i].servName); 
-				} else { 
+				if (serviceList[0] == '\0') {
+					sprintf(serviceList, "%s", invokeCmdResp->invokeCmdResp.advRsp.servAdvInfo[i].servName);
+				} else {
                     sprintf(serviceList, "%s %s", serviceList, invokeCmdResp->invokeCmdResp.advRsp.servAdvInfo[i].servName);
-				} 
+				}
                     sprintf(advidList, "%s %lx", advidList, invokeCmdResp->invokeCmdResp.advRsp.servAdvInfo[i].advtID);
                     sprintf(serviceMac, "%s %s", serviceMac, invokeCmdResp->invokeCmdResp.advRsp.servAdvInfo[i].serviceMac);
                 }

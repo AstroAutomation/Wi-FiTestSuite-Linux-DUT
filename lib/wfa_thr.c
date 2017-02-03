@@ -311,7 +311,7 @@ void  wfaSentStatsResp(t_ifaceHandle* dutHandle, char* buf)
         allStreams++;
     }
 
-    printf("stream thread: %u %u %llu %llu\n", first->cmdru.stats.txFrames,
+    printf("stream thread: %u %u %" PRIu64 " %" PRIu64 "\n", first->cmdru.stats.txFrames,
            first->cmdru.stats.rxFrames,
            first->cmdru.stats.txPayloadBytes,
            first->cmdru.stats.rxPayloadBytes);
@@ -606,7 +606,7 @@ void* wfa_wmm_thread(void* thr_param)
     t_ifaceHandle* dutHandle = ((tgThrData_t*) thr_param)->dutHandle;
     tgWMM_t* my_wmm = &wmm_thr[myId];
     tgStream_t* myStream = NULL;
-    int myStreamId, i = 0, rttime = 0, difftime = 0, rcvCount = 0, sendCount = 0;
+    int myStreamId, i = 0, rttime = 0, rcvCount = 0, sendCount = 0;
     int mySock = -1, status, respLen = 0, nbytes = 0, j = 0;
     tgProfile_t* myProfile;
     pthread_attr_t tattr;
@@ -746,9 +746,10 @@ void* wfa_wmm_thread(void* thr_param)
                          * If your device is BIG ENDIAN, you need to
                          * modify the the function calls
                          */
-                        int2BuffBigEndian(asn++, & ((tgHeader_t*) trafficBuf)->hdr[8]);
-                        int2BuffBigEndian(lstime.tv_sec, & ((tgHeader_t*) trafficBuf)->hdr[12]);
-                        int2BuffBigEndian(lstime.tv_usec, & ((tgHeader_t*) trafficBuf)->hdr[16]);
+                        tgHeader_t* trafficHeader = (tgHeader_t*) trafficBuf;
+                        int2BuffBigEndian(asn++, &trafficHeader->hdr[8]);
+                        int2BuffBigEndian(lstime.tv_sec, &trafficHeader->hdr[12]);
+                        int2BuffBigEndian(lstime.tv_usec, &trafficHeader->hdr[16]);
 #else
                         j++;
                         i = 0;
@@ -853,6 +854,8 @@ void* wfa_wmm_thread(void* thr_param)
                     }
                     while((i <= myProfile->rate + myProfile->rate / 3) && (myProfile->rate != 0) && (gtgTransac != 0));
 
+                    // NOTE: this block of logic is nonsensical since nothing ever sets difftime
+                    int difftime = 0;
                     if(myProfile->maxcnt == 0) {
                         gettimeofday(&lrtime, NULL);
                         rttime = wfa_itime_diff(&lstime, &lrtime);
@@ -1010,9 +1013,10 @@ void* wfa_wmm_thread(void* thr_param)
                         if(myProfile->profile == PROF_IPTV) {
                             struct timeval ttval, currTimeVal;
 
-                            int sn = bigEndianBuff2Int(((tgHeader_t*) recvBuf)->hdr + 8);
-                            ttval.tv_sec = bigEndianBuff2Int(((tgHeader_t*) recvBuf)->hdr +12);
-                            ttval.tv_usec = bigEndianBuff2Int(((tgHeader_t*) recvBuf)->hdr +16);
+                            tgHeader_t* trafficHeader = (tgHeader_t*) trafficBuf;
+                            int sn = bigEndianBuff2Int(&trafficHeader->hdr[8]);
+                            ttval.tv_sec = bigEndianBuff2Int(&trafficHeader->hdr[12]);
+                            ttval.tv_usec = bigEndianBuff2Int(&trafficHeader->hdr[16]);
                             gettimeofday(&currTimeVal, NULL);
 
                             /*
@@ -1118,8 +1122,10 @@ void* wfa_wmm_thread(void* thr_param)
 #ifdef WFA_VOICE_EXT
                         /* for a transaction receiver, it just needs to send the local time back */
                         gettimeofday(&lstime, NULL);
-                        int2BuffBigEndian(lstime.tv_sec, & ((tgHeader_t*) trafficBuf)->hdr[12]);
-                        int2BuffBigEndian(lstime.tv_usec, & ((tgHeader_t*) trafficBuf)->hdr[16]);
+
+                        tgHeader_t* trafficHeader = (tgHeader_t*) trafficBuf;
+                        int2BuffBigEndian(lstime.tv_sec, &trafficHeader->hdr[12]);
+                        int2BuffBigEndian(lstime.tv_usec, &trafficHeader->hdr[16]);
 #endif
                         memset(respBuf, 0, WFA_RESP_BUF_SZ);
                         respLen = 0;

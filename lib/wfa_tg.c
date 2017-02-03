@@ -562,7 +562,7 @@ int wfaTGRecvStop(int len, char* parms, int* respLen, char* respBuf)
         statResp.streamId = streamid;
 
 #if 1
-        DPRINT_INFO(WFA_OUT, "stream Id %u rx %u total %llu\n", streamid, myStream->stats.rxFrames, myStream->stats.rxPayloadBytes);
+        DPRINT_INFO(WFA_OUT, "stream Id %u rx %u total %" PRIu64 "\n", streamid, myStream->stats.rxFrames, myStream->stats.rxPayloadBytes);
 #endif
         memcpy(&statResp.cmdru.stats, &myStream->stats, sizeof(tgStats_t));
         memcpy((dutRspBuf + i * (8 + sizeof(tgStats_t))), (char*) &statResp, (8 + sizeof(tgStats_t)));
@@ -1082,7 +1082,7 @@ int wfaSendLongFile(int mySockfd, int streamid, char* aRespBuf, int* aRespLen)
     memcpy(&sendResp.cmdru.stats, &myStream->stats, sizeof(tgStats_t));
 
 #if 0
-    DPRINT_INFO(WFA_OUT, "stream Id %u tx %u total %llu\n", myStream->id, myStream->stats.txFrames, myStream->stats.txPayloadBytes);
+    DPRINT_INFO(WFA_OUT, "stream Id %u tx %u total %" PRIu64 "\n", myStream->id, myStream->stats.txFrames, myStream->stats.txPayloadBytes);
 #endif
 
     wfaEncodeTLV(WFA_TRAFFIC_AGENT_SEND_RESP_TLV, 8 + sizeof(tgStats_t),
@@ -1365,13 +1365,14 @@ int wfaSendBitrateData(int mySockfd, int streamId, char* pRespBuf, int* pRespLen
         for(i = 0; i <= (theProf->rate); i++) {
             counter++;
             /* fill in the counter */
-            int2BuffBigEndian(counter, & ((tgHeader_t*) packBuf)->hdr[8]);
+            tgHeader_t* trafficHeader = (tgHeader_t*)packBuf;
+            int2BuffBigEndian(counter, &trafficHeader->hdr[8]);
             /*
              * Fill the timestamp to the header.
             */
             gettimeofday(&stime, NULL);
-            int2BuffBigEndian(stime.tv_sec, &((tgHeader_t*)packBuf)->hdr[12]);
-            int2BuffBigEndian(stime.tv_usec, &((tgHeader_t*)packBuf)->hdr[16]);
+            int2BuffBigEndian(stime.tv_sec, &trafficHeader->hdr[12]);
+            int2BuffBigEndian(stime.tv_usec, &trafficHeader->hdr[16]);
             bytesSent = wfaTrafficSendTo(mySockfd, packBuf, packLen,
                                          (struct sockaddr*) &toAddr);
 
@@ -1466,8 +1467,10 @@ int wfaSendBitrateData(int mySockfd, int streamId, char* pRespBuf, int* pRespLen
     *pRespLen = WFA_TLV_HDR_LEN + 8 + sizeof(tgStats_t);
 
     extraTimeSpendOnSending = extraTimeSpendOnSending / 1000;
-    DPRINT_INFO(WFA_OUT, "*** wfg_tg.cpp wfaSendBitrateData Count=%i txFrames=%i totalByteSent=%i sleepTotal=%llu milSec extraTimeSpendOnSending=%llu nOverTimeCount=%d nOverSend=%i rate=%d nDuration=%d ***\n",
-                counter, (myStream->stats.txFrames), (unsigned int)(myStream->stats.txPayloadBytes), sleepTotal, extraTimeSpendOnSending, nOverTimeCount, nOverSend, theProf->rate , nDuration);
+#if DEBUG
+    DPRINT_INFO(WFA_OUT, "*** wfg_tg.cpp wfaSendBitrateData Count=%i txFrames=%" PRIu64 " totalByteSent=%" PRIu64 " sleepTotal=%" PRIu64 " milSec extraTimeSpendOnSending=%" PRIu64 " nOverTimeCount=%d nOverSend=%i rate=%d nDuration=%d ***\n",
+                counter, myStream->stats.txFrames, myStream->stats.txPayloadBytes, sleepTotal, extraTimeSpendOnSending, nOverTimeCount, nOverSend, theProf->rate , nDuration);
+#endif
     wfaSleepMilsec(1000);
     return ret;
 

@@ -123,7 +123,7 @@ int wfaStaAssociate(int len, char* caCmdBuf, int* respLen, char* respBuf)
 {
     dutCommand_t* assoc = (dutCommand_t*) caCmdBuf;
     char* ifname = assoc->intf;
-    char* ssid = assoc->cmdsu.ssid;
+    //char* ssid = assoc->cmdsu.ssid;
     dutCmdResponse_t* staAssocResp = &gGenericResp;
 
     DPRINT_INFO(WFA_OUT, "entering wfaStaAssociate ...\n");
